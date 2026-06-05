@@ -13,20 +13,29 @@ def _get_client() -> Client:
 
 @st.cache_data(ttl=300)
 def get_latest_prices() -> pd.DataFrame:
-    """Most recent price snapshot for each coin, sorted by rank."""
+    """Most recent price snapshot for each coin, sorted by rank.
+
+    Queries by the latest bucket_time to avoid Python-side groupby on a capped
+    result set — correct regardless of how large the prices table grows.
+    """
     client = _get_client()
+    # Step 1: find the most recent bucket_time
+    latest = (client.table("prices")
+              .select("bucket_time")
+              .order("bucket_time", desc=True)
+              .limit(1)
+              .execute())
+    if not latest.data:
+        return pd.DataFrame()
+    latest_bucket = latest.data[0]["bucket_time"]
+    # Step 2: fetch all coins at exactly that bucket_time
     result = (client.table("prices")
               .select("*")
-              .order("bucket_time", desc=True)
-              .limit(200)
+              .eq("bucket_time", latest_bucket)
               .execute())
     df = pd.DataFrame(result.data)
     if df.empty:
         return df
-    df = (df.sort_values("bucket_time", ascending=False)
-            .groupby("coin_id")
-            .first()
-            .reset_index())
     return df.sort_values("rank")
 
 
