@@ -1,6 +1,7 @@
-supabase>=2.4.0
-requests>=2.31.0
-tenacity>=8.2.3
-pandas>=2.1.0
-plotly>=5.18.0
-streamlit>=1.30.0
+supabase>=2.4.0,<3
+requests>=2.31.0,<3
+tenacity>=8.2.3,<9
+pandas>=2.2,<3
+numpy>=1.26,<2.3
+plotly>=5.18,<6
+streamlit>=1.30,<2

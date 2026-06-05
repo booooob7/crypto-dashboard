@@ -51,7 +51,7 @@ def test_fetch_top10_returns_correct_shape():
 
 def test_fetch_top10_uses_api_key_when_env_set(monkeypatch):
     monkeypatch.setenv("COINGECKO_API_KEY", "test-key-abc")
-    with patch("requests.get", return_value=_mock_get([])) as mock_get:
+    with patch("requests.get", return_value=_mock_get(MOCK_RESPONSE)) as mock_get:
         from etl import fetch_prices
         import importlib
         importlib.reload(fetch_prices)
@@ -62,10 +62,31 @@ def test_fetch_top10_uses_api_key_when_env_set(monkeypatch):
 
 def test_fetch_top10_no_key_uses_empty_headers(monkeypatch):
     monkeypatch.delenv("COINGECKO_API_KEY", raising=False)
-    with patch("requests.get", return_value=_mock_get([])) as mock_get:
+    with patch("requests.get", return_value=_mock_get(MOCK_RESPONSE)) as mock_get:
         from etl import fetch_prices
         import importlib
         importlib.reload(fetch_prices)
         fetch_prices.fetch_top10_prices()
         headers = mock_get.call_args.kwargs.get("headers", {})
         assert "x-cg-demo-api-key" not in headers
+
+
+def test_fetch_top10_raises_on_empty_response():
+    from etl.fetch_prices import fetch_top10_prices
+    with patch("requests.get", return_value=_mock_get([])):
+        with pytest.raises(ValueError):
+            fetch_top10_prices()
+
+
+def test_fetch_top10_skips_rows_missing_price():
+    incomplete = [
+        {"id": "bitcoin", "symbol": "btc", "market_cap_rank": 1,
+         "current_price": 65000.0},
+        {"id": "ethereum", "symbol": "eth", "market_cap_rank": 2,
+         "current_price": None},  # missing price → skipped
+    ]
+    from etl.fetch_prices import fetch_top10_prices
+    with patch("requests.get", return_value=_mock_get(incomplete)):
+        rows = fetch_top10_prices()
+    assert len(rows) == 1
+    assert rows[0]["coin_id"] == "bitcoin"

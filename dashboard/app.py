@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from dashboard.queries import (
     get_latest_prices,
@@ -21,6 +22,15 @@ st.set_page_config(
 
 st.title("📊 Crypto Market Dashboard")
 
+
+def format_delta(value) -> str | None:
+    """Format a percentage change for st.metric, treating NaN/None as no delta.
+
+    Seeded historical rows store change_24h as None, which pandas surfaces as NaN.
+    `NaN is not None` is True, so a plain `is not None` check would render 'nan%'.
+    """
+    return f"{value:.2f}%" if pd.notna(value) else None
+
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Controls")
@@ -42,21 +52,19 @@ if not prices_df.empty:
 
     btc = prices_df[prices_df["coin_id"] == "bitcoin"].iloc[0] if "bitcoin" in coin_ids else None
     eth = prices_df[prices_df["coin_id"] == "ethereum"].iloc[0] if "ethereum" in coin_ids else None
-    total_mcap = prices_df["market_cap"].sum()
+    top10_mcap = prices_df["market_cap"].sum()
     fg_current = int(fg_df.iloc[-1]["value"]) if not fg_df.empty else None
     fg_label   = fg_df.iloc[-1]["label"]       if not fg_df.empty else "N/A"
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if btc is not None:
-            delta = f"{btc['change_24h']:.2f}%" if btc["change_24h"] is not None else None
-            st.metric("₿ Bitcoin", f"${btc['price_usd']:,.0f}", delta)
+            st.metric("₿ Bitcoin", f"${btc['price_usd']:,.0f}", format_delta(btc["change_24h"]))
     with col2:
         if eth is not None:
-            delta = f"{eth['change_24h']:.2f}%" if eth["change_24h"] is not None else None
-            st.metric("Ξ Ethereum", f"${eth['price_usd']:,.0f}", delta)
+            st.metric("Ξ Ethereum", f"${eth['price_usd']:,.0f}", format_delta(eth["change_24h"]))
     with col3:
-        st.metric("🌐 Total Market Cap", f"${total_mcap / 1e12:.2f}T")
+        st.metric("🌐 Top 10 Market Cap", f"${top10_mcap / 1e12:.2f}T")
     with col4:
         if fg_current is not None:
             st.metric("🧭 Fear & Greed", f"{fg_current} — {fg_label}")

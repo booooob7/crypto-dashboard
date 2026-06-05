@@ -1,3 +1,26 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Row Level Security (RLS) posture for this assignment:
+--
+-- RLS is INTENTIONALLY LEFT DISABLED on all three tables below. Supabase tables
+-- have RLS disabled by default, so no policies are required for this project.
+--
+-- Key separation is still enforced at the application layer:
+--   • ETL (GitHub Actions) writes using SUPABASE_SERVICE_ROLE_KEY.
+--   • Dashboard (Streamlit) reads using SUPABASE_ANON_KEY (SELECT only).
+--
+-- IF you choose to ENABLE RLS later, you MUST add a read policy for the anon
+-- role on each table, or the dashboard's anon-key reads will return zero rows:
+--
+--   ALTER TABLE prices     ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY anon_read_prices     ON prices     FOR SELECT TO anon USING (true);
+--   ALTER TABLE fear_greed ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY anon_read_fear_greed ON fear_greed FOR SELECT TO anon USING (true);
+--   ALTER TABLE onchain    ENABLE ROW LEVEL SECURITY;
+--   CREATE POLICY anon_read_onchain    ON onchain    FOR SELECT TO anon USING (true);
+--
+-- Writes remain service-role-only because the service role bypasses RLS.
+-- ─────────────────────────────────────────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS prices (
   id          SERIAL PRIMARY KEY,
   coin_id     TEXT        NOT NULL,

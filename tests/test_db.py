@@ -40,7 +40,8 @@ def test_onchain_has_yesterday_returns_true_when_row_exists():
     mock_client = MagicMock()
     (mock_client.table.return_value
      .select.return_value
-     .eq.return_value
+     .eq.return_value          # .eq("metric", ...)
+     .eq.return_value          # .eq("recorded_at", ...)
      .limit.return_value
      .execute.return_value.data) = [{"id": 1}]
     assert onchain_has_yesterday(mock_client) is True
@@ -51,10 +52,27 @@ def test_onchain_has_yesterday_returns_false_when_empty():
     mock_client = MagicMock()
     (mock_client.table.return_value
      .select.return_value
-     .eq.return_value
+     .eq.return_value          # .eq("metric", ...)
+     .eq.return_value          # .eq("recorded_at", ...)
      .limit.return_value
      .execute.return_value.data) = []
     assert onchain_has_yesterday(mock_client) is False
+
+
+def test_onchain_has_yesterday_filters_by_metric():
+    from etl.db import onchain_has_yesterday
+    mock_client = MagicMock()
+    table = mock_client.table.return_value
+    (table.select.return_value
+     .eq.return_value
+     .eq.return_value
+     .limit.return_value
+     .execute.return_value.data) = []
+    onchain_has_yesterday(mock_client, metric="n-unique-addresses")
+    # first .eq() call must filter on the metric column
+    first_eq = table.select.return_value.eq
+    assert first_eq.call_args.args[0] == "metric"
+    assert first_eq.call_args.args[1] == "n-unique-addresses"
 
 
 def test_upsert_prices_calls_supabase_with_correct_table():

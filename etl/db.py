@@ -106,23 +106,27 @@ def fear_greed_has_today(client: Client) -> bool:
     return len(result.data) > 0
 
 
-def onchain_has_yesterday(client: Client) -> bool:
-    """Check if on-chain metrics data exists for yesterday.
+def onchain_has_yesterday(client: Client, metric: str = "n-unique-addresses") -> bool:
+    """Check if a specific on-chain metric exists for yesterday.
 
-    Queries the onchain table to see if records with yesterday's date exist.
+    Queries the onchain table for a row matching the given metric AND yesterday's
+    date. The check is metric-specific so that the presence of some other metric
+    does not cause the ETL to skip fetching the metric the dashboard actually needs.
     Used by ETL to avoid redundant API calls if data is already fetched.
     On-chain data is checked for yesterday (not today) because on-chain metrics
     are published and finalized once per day at a fixed time.
 
     Args:
         client: Supabase client instance.
+        metric: The on-chain metric name to check for (default: the dashboard metric).
 
     Returns:
-        bool: True if at least one record exists for yesterday, False otherwise.
+        bool: True if a record for this metric exists for yesterday, False otherwise.
     """
     yesterday = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
     result = (client.table("onchain")
               .select("id")
+              .eq("metric", metric)
               .eq("recorded_at", yesterday)
               .limit(1)
               .execute())
