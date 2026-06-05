@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from etl.db import get_client, upsert_prices, upsert_fear_greed, upsert_onchain
 from etl.fetch_fear_greed import fetch_fear_greed
 from etl.fetch_onchain import fetch_all_onchain
+from etl.fetch_prices import _is_transient_request_error
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -24,6 +25,29 @@ def _headers() -> dict:
     return {"x-cg-demo-api-key": key} if key else {}
 
 
+def _coingecko_get_json(url: str, params: dict) -> dict | list:
+    """GET CoinGecko JSON with longer waits for keyless rate-limit bursts."""
+    delay = 15
+    attempts = 5
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = requests.get(url, headers=_headers(), params=params, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as exc:
+            if attempt == attempts or not _is_transient_request_error(exc):
+                raise
+            log.warning(
+                "CoinGecko request rate-limited/transient failure; retrying in %ss (%s/%s)",
+                delay,
+                attempt,
+                attempts,
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, 90)
+    raise RuntimeError("unreachable")
+
+
 def fetch_live_top10() -> list[dict]:
     """Fetch the live top-10 coins by market cap so the seed matches the scheduled ETL.
 
@@ -31,19 +55,15 @@ def fetch_live_top10() -> list[dict]:
     /coins/markets endpoint used by the scheduled ETL (fetch_top10_prices). This
     keeps the seeded coin set in sync with what the dashboard selectbox will offer.
     """
-    resp = requests.get(
+    payload = _coingecko_get_json(
         f"{COINGECKO_BASE}/coins/markets",
-        headers=_headers(),
         params={
             "vs_currency": "usd",
             "order": "market_cap_desc",
             "per_page": 10,
             "page": 1,
         },
-        timeout=30,
     )
-    resp.raise_for_status()
-    payload = resp.json()
     if not isinstance(payload, list) or len(payload) == 0:
         raise ValueError("CoinGecko /coins/markets returned an empty top-10 list")
     coins = [
@@ -67,25 +87,21 @@ def seed_price_history(coin: dict, days: int = 90) -> list[dict]:
     """
     coin_id = coin["id"]
     log.info(f"  Seeding {coin_id} ({days}d)…")
-    resp = requests.get(
+    data = _coingecko_get_json(
         f"{COINGECKO_BASE}/coins/{coin_id}/market_chart",
-        headers=_headers(),
         params={"vs_currency": "usd", "days": days, "interval": "daily"},
-        timeout=30,
     )
-    resp.raise_for_status()
-    data = resp.json()
 
     fetched = datetime.now(timezone.utc).isoformat()
     prices   = {p[0]: p[1] for p in data["prices"]}
     volumes  = {p[0]: p[1] for p in data["total_volumes"]}
     mkt_caps = {p[0]: p[1] for p in data["market_caps"]}
 
-    rows = []
+    rows_by_bucket = {}
     for ts_ms in prices:
         dt = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
         bucket = dt.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        rows.append({
+        rows_by_bucket[bucket] = {
             "coin_id":     coin_id,
             "symbol":      coin["symbol"],
             "rank":        coin["rank"],
@@ -96,8 +112,8 @@ def seed_price_history(coin: dict, days: int = 90) -> list[dict]:
             "change_7d":   None,
             "bucket_time": bucket,
             "fetched_at":  fetched,
-        })
-    return rows
+        }
+    return [rows_by_bucket[bucket] for bucket in sorted(rows_by_bucket)]
 
 
 def run() -> None:

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+import requests
 
 MOCK_RESPONSE = [
     {
@@ -30,6 +31,12 @@ def _mock_get(response_data):
     mock_resp.json.return_value = response_data
     mock_resp.raise_for_status.return_value = None
     return mock_resp
+
+
+def _http_error(status_code: int):
+    response = MagicMock()
+    response.status_code = status_code
+    return requests.HTTPError(f"{status_code} error", response=response)
 
 
 def test_fetch_top10_returns_correct_shape():
@@ -90,3 +97,13 @@ def test_fetch_top10_skips_rows_missing_price():
         rows = fetch_top10_prices()
     assert len(rows) == 1
     assert rows[0]["coin_id"] == "bitcoin"
+
+
+def test_transient_retry_predicate_retries_429_and_5xx_only():
+    from etl.fetch_prices import _is_transient_request_error
+
+    assert _is_transient_request_error(_http_error(429)) is True
+    assert _is_transient_request_error(_http_error(500)) is True
+    assert _is_transient_request_error(_http_error(503)) is True
+    assert _is_transient_request_error(_http_error(401)) is False
+    assert _is_transient_request_error(ValueError("bad payload")) is False

@@ -6,7 +6,7 @@ from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
+    retry_if_exception,
 )
 from etl.db import bucket_time_now
 
@@ -16,15 +16,26 @@ COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 EXPECTED_COIN_COUNT = 10
 
 
+def _is_transient_request_error(exc: BaseException) -> bool:
+    """Return True for network errors plus 429/5xx responses worth retrying."""
+    if not isinstance(exc, requests.RequestException):
+        return False
+    response = getattr(exc, "response", None)
+    if response is None:
+        return True
+    status_code = getattr(response, "status_code", None)
+    return status_code == 429 or (status_code is not None and status_code >= 500)
+
+
 def _headers() -> dict:
     key = os.environ.get("COINGECKO_API_KEY")
     return {"x-cg-demo-api-key": key} if key else {}
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(requests.RequestException),
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=5, min=5, max=60),
+    retry=retry_if_exception(_is_transient_request_error),
 )
 def fetch_top10_prices() -> list[dict]:
     """Fetch top-10 coins by market cap from CoinGecko. Raises on failure (critical).
