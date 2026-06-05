@@ -18,7 +18,9 @@ def fetch_fear_greed(limit: int = 30) -> list[dict]:
     fetched = datetime.now(timezone.utc).isoformat()
     rows = []
     for entry in response.json()["data"]:
-        ts = int(entry["timestamp"])
+        ts = int(entry.get("timestamp", 0))
+        if ts == 0:
+            continue  # skip entries with missing timestamp
         recorded = datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
         rows.append({
             "value": int(entry["value"]),

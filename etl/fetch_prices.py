@@ -37,10 +37,10 @@ def fetch_top10_prices() -> list[dict]:
         rows.append({
             "coin_id": coin["id"],
             "symbol": coin["symbol"].upper(),
-            "rank": coin["market_cap_rank"],
+            "rank": coin.get("market_cap_rank"),
             "price_usd": coin["current_price"],
-            "market_cap": coin["market_cap"],
-            "volume_24h": coin["total_volume"],
+            "market_cap": coin.get("market_cap"),
+            "volume_24h": coin.get("total_volume"),
             "change_24h": coin.get("price_change_percentage_24h"),
             "change_7d": coin.get("price_change_percentage_7d_in_currency"),
             "bucket_time": bucket,

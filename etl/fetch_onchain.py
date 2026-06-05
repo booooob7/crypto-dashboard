@@ -18,6 +18,8 @@ def fetch_metric(metric_name: str, timespan: str = "30days") -> list[dict]:
     fetched = datetime.now(timezone.utc).isoformat()
     rows = []
     for point in response.json().get("values", []):
+        if "x" not in point or "y" not in point:
+            continue  # skip malformed data points
         ts = int(point["x"])
         recorded = datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
         rows.append({
