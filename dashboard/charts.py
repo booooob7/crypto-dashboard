@@ -19,16 +19,16 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     )
     fig.add_trace(go.Scatter(
         x=df["bucket_time"], y=df["price_usd"],
-        mode="lines", name="Price",
+        mode="lines", name="價格",
         line=dict(color=_GREEN, width=2),
     ), row=1, col=1)
     fig.add_trace(go.Bar(
         x=df["bucket_time"], y=df["volume_24h"],
-        name="Volume",
+        name="交易量",
         marker_color="rgba(0,212,170,0.3)",
     ), row=2, col=1)
     fig.update_layout(
-        title=f"{coin_id.capitalize()} Price & Volume",
+        title=f"{coin_id.capitalize()} 價格與交易量",
         paper_bgcolor=_BG, plot_bgcolor=_BG,
         font=dict(color="white"),
         legend=dict(orientation="h"),
@@ -74,13 +74,13 @@ def fear_greed_history_chart(df: pd.DataFrame) -> go.Figure:
         x=pd.to_datetime(df["recorded_at"]),
         y=df["value"],
         mode="lines+markers",
-        name="F&G Index",
+        name="恐懼貪婪指數",
         line=dict(color=_YELLOW, width=2),
         fill="tozeroy",
         fillcolor="rgba(233,196,106,0.1)",
     ))
     fig.update_layout(
-        title="Fear & Greed — 30 Day History",
+        title="恐懼貪婪指數 — 近 30 天",
         paper_bgcolor=_BG, plot_bgcolor=_BG,
         font=dict(color="white"),
         yaxis=dict(range=[0, 100]),

@@ -15,12 +15,12 @@ from dashboard.charts import (
 )
 
 st.set_page_config(
-    page_title="Crypto Dashboard",
+    page_title="加密貨幣市場儀表板",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("📊 Crypto Market Dashboard")
+st.title("📊 加密貨幣市場儀表板")
 
 
 def format_delta(value) -> str | None:
@@ -33,14 +33,14 @@ def format_delta(value) -> str | None:
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("Controls")
+    st.header("控制面板")
     last_updated = get_last_updated()
-    st.caption(f"Last updated: {last_updated}")
-    if st.button("🔄 Refresh data"):
+    st.caption(f"最後更新：{last_updated}")
+    if st.button("🔄 重新整理資料"):
         st.cache_data.clear()
         st.rerun()
     st.divider()
-    st.caption("Sources: CoinGecko · Alternative.me · Blockchain.com")
+    st.caption("資料來源：CoinGecko · Alternative.me · Blockchain.com")
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 prices_df = get_latest_prices()
@@ -59,17 +59,17 @@ if not prices_df.empty:
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if btc is not None:
-            st.metric("₿ Bitcoin", f"${btc['price_usd']:,.0f}", format_delta(btc["change_24h"]))
+            st.metric("₿ 比特幣", f"${btc['price_usd']:,.0f}", format_delta(btc["change_24h"]))
     with col2:
         if eth is not None:
-            st.metric("Ξ Ethereum", f"${eth['price_usd']:,.0f}", format_delta(eth["change_24h"]))
+            st.metric("Ξ 以太幣", f"${eth['price_usd']:,.0f}", format_delta(eth["change_24h"]))
     with col3:
-        st.metric("🌐 Top 10 Market Cap", f"${top10_mcap / 1e12:.2f}T")
+        st.metric("🌐 前十大市值", f"${top10_mcap / 1e12:.2f}T")
     with col4:
         if fg_current is not None:
-            st.metric("🧭 Fear & Greed", f"{fg_current} — {fg_label}")
+            st.metric("🧭 恐懼貪婪指數", f"{fg_current} — {fg_label}")
 else:
-    st.warning("No price data yet — run the seed script first.")
+    st.warning("尚無價格資料 — 請先執行 seed 腳本。")
 
 st.divider()
 
@@ -78,26 +78,26 @@ coin_options = prices_df["coin_id"].tolist() if not prices_df.empty else ["bitco
 col_a, col_b = st.columns([2, 1])
 with col_a:
     selected_coin = st.selectbox(
-        "Select Coin",
+        "選擇幣種",
         coin_options,
         format_func=lambda x: x.capitalize(),
     )
 with col_b:
-    days_map = {"7D": 7, "30D": 30, "90D": 90}
-    selected_range = st.radio("Range", list(days_map.keys()), horizontal=True)
+    days_map = {"7天": 7, "30天": 30, "90天": 90}
+    selected_range = st.radio("時間範圍", list(days_map.keys()), horizontal=True)
 
 history_df = get_price_history(selected_coin, days_map[selected_range])
 if not history_df.empty:
     st.plotly_chart(price_history_chart(history_df, selected_coin), use_container_width=True)
 else:
-    st.info("No price history yet — run the seed script, then wait for the ETL to run.")
+    st.info("尚無價格歷史資料 — 請先執行 seed 腳本，再等待 ETL 執行。")
 
 st.divider()
 
 # ── Section 3: Market Sentiment ───────────────────────────────────────────────
 col_gauge, col_trend = st.columns(2)
 with col_gauge:
-    st.subheader("Current Sentiment")
+    st.subheader("目前市場情緒")
     if not fg_df.empty:
         last_fg = fg_df.iloc[-1]
         st.plotly_chart(
@@ -105,21 +105,21 @@ with col_gauge:
             use_container_width=True,
         )
     else:
-        st.info("Fear & Greed data not available yet.")
+        st.info("尚無恐懼貪婪指數資料。")
 with col_trend:
-    st.subheader("30-Day Trend")
+    st.subheader("近 30 天趨勢")
     if not fg_df.empty:
         st.plotly_chart(fear_greed_history_chart(fg_df), use_container_width=True)
 
 st.divider()
 
 # ── Section 4: On-Chain Metrics ───────────────────────────────────────────────
-st.subheader("On-Chain: Active Bitcoin Addresses (30D)")
+st.subheader("鏈上數據：比特幣活躍地址數（近 30 天）")
 onchain_df = get_onchain_history("n-unique-addresses", 30)
 if not onchain_df.empty:
     st.plotly_chart(
-        onchain_chart(onchain_df, "Active Bitcoin Addresses"),
+        onchain_chart(onchain_df, "比特幣活躍地址數"),
         use_container_width=True,
     )
 else:
-    st.info("On-chain data not available yet.")
+    st.info("尚無鏈上數據。")
