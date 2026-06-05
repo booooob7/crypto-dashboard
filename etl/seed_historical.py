@@ -46,11 +46,16 @@ def fetch_live_top10() -> list[dict]:
     payload = resp.json()
     if not isinstance(payload, list) or len(payload) == 0:
         raise ValueError("CoinGecko /coins/markets returned an empty top-10 list")
-    return [
+    coins = [
         {"id": c["id"], "symbol": c["symbol"].upper(), "rank": c.get("market_cap_rank")}
         for c in payload
-        if c.get("id") and c.get("symbol")
+        if isinstance(c, dict) and c.get("id") and c.get("symbol")
     ]
+    if not coins:
+        raise ValueError("CoinGecko top-10 payload contained no usable coin rows")
+    if len(coins) < 10:
+        log.warning("Expected 10 seed coins, got %d usable rows", len(coins))
+    return coins
 
 
 def seed_price_history(coin: dict, days: int = 90) -> list[dict]:
