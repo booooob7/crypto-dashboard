@@ -41,20 +41,31 @@ def test_price_history_chart_uses_unified_crosshair_hover():
     assert fig.layout.xaxis2.showspikes is True
 
 
-def test_price_history_chart_hover_includes_volume_and_visible_bars():
+def test_price_history_chart_hover_includes_volume():
     from dashboard.charts import price_history_chart
     fig = price_history_chart(_price_df(), "bitcoin")
     assert "交易量" in fig.data[0].hovertemplate
     assert fig.data[0].customdata[0][0] == 25e9
-    assert fig.data[1].marker.color == "rgba(76,201,240,0.95)"
-    assert fig.data[1].width is not None
 
 
-def test_price_history_chart_uses_category_dates_to_avoid_visual_gaps():
+def test_price_history_chart_volume_bars_coloured_by_direction():
+    from dashboard.charts import price_history_chart, _VOL_UP, _VOL_DOWN
+    # rising then falling price → second bar up (green), third bar down (red)
+    df = pd.DataFrame({
+        "bucket_time": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"], utc=True),
+        "price_usd":   [65000.0, 66000.0, 64000.0],
+        "volume_24h":  [25e9, 26e9, 24e9],
+    })
+    fig = price_history_chart(df, "bitcoin")
+    colors = list(fig.data[1].marker.color)
+    assert colors == [_VOL_UP, _VOL_UP, _VOL_DOWN]
+
+
+def test_price_history_chart_uses_datetime_axis():
     from dashboard.charts import price_history_chart
     fig = price_history_chart(_price_df(), "bitcoin")
-    assert fig.layout.xaxis.type == "category"
-    assert list(fig.data[0].x) == ["2024-01-01", "2024-01-02"]
+    assert fig.layout.xaxis2.type == "date"
+    assert fig.layout.yaxis.side == "right"
 
 
 def test_fear_greed_gauge_returns_figure_with_correct_value():

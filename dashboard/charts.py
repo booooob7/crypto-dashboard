@@ -37,19 +37,45 @@ def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
     return fig
 
 
+_VOL_UP = "rgba(0,212,170,0.55)"     # 漲：綠
+_VOL_DOWN = "rgba(239,83,80,0.55)"   # 跌：紅
+
+
 def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
-    """Dual-panel: price line (top 70%) + volume bars (bottom 30%), shared x-axis."""
-    chart_dates = pd.to_datetime(df["bucket_time"], utc=True).dt.strftime("%Y-%m-%d")
+    """TradingView-style dual panel: price line (top) + direction-coloured volume bars (bottom).
+
+    Uses a real datetime x-axis so Plotly auto-spaces sparse, horizontal tick labels
+    (no more cramped/rotated daily labels). Volume bars are coloured green/red by daily
+    price direction so price and volume are visually distinct. Price y-axis sits on the
+    right (TradingView convention) and is range-padded to the data so it does not start
+    at zero.
+    """
+    df = df.copy()
+    df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
+
+    # Volume bar colours by daily price direction (first bar treated as "up")
+    prices = df["price_usd"].tolist()
+    vol_colors = [_VOL_UP] + [
+        _VOL_UP if prices[i] >= prices[i - 1] else _VOL_DOWN
+        for i in range(1, len(prices))
+    ]
+
+    # Tight, padded price range so the line fills the panel (not squashed toward zero)
+    p_min, p_max = min(prices), max(prices)
+    pad = (p_max - p_min) * 0.08 or p_max * 0.02
+    price_range = [p_min - pad, p_max + pad]
+
     fig = make_subplots(
         rows=2, cols=1,
-        row_heights=[0.7, 0.3],
+        row_heights=[0.78, 0.22],
         shared_xaxes=True,
-        vertical_spacing=0.05,
+        vertical_spacing=0.04,
     )
     fig.add_trace(go.Scatter(
-        x=chart_dates, y=df["price_usd"],
+        x=df["bucket_time"], y=df["price_usd"],
         mode="lines", name="價格",
         line=dict(color=_GREEN, width=2),
+        fill="tozeroy", fillcolor="rgba(0,212,170,0.08)",
         customdata=df[["volume_24h"]],
         hovertemplate=(
             "價格：$%{y:,.2f}<br>"
@@ -58,22 +84,28 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
         ),
     ), row=1, col=1)
     fig.add_trace(go.Bar(
-        x=chart_dates, y=df["volume_24h"],
+        x=df["bucket_time"], y=df["volume_24h"],
         name="交易量",
-        marker_color="rgba(76,201,240,0.95)",
-        width=0.72,
+        marker_color=vol_colors,
+        marker_line_width=0,
         hovertemplate="交易量：$%{y:,.0f}<extra></extra>",
     ), row=2, col=1)
     fig.update_layout(
         title=f"{coin_id.capitalize()} 價格與交易量",
         paper_bgcolor=_BG, plot_bgcolor=_BG,
-        font=dict(color="white"),
-        legend=dict(orientation="h"),
+        font=dict(color="#d1d4dc"),
+        showlegend=False,
         margin=dict(l=0, r=0, t=40, b=0),
-        height=450,
+        height=480,
+        bargap=0.25,
     )
-    fig.update_xaxes(gridcolor=_GRID, type="category")
-    fig.update_yaxes(gridcolor=_GRID)
+    # Price panel: y-axis on the right, padded range
+    fig.update_yaxes(gridcolor=_GRID, side="right", range=price_range, row=1, col=1)
+    # Volume panel: y-axis on the right, no gridlines for a cleaner look
+    fig.update_yaxes(gridcolor=_GRID, side="right", showgrid=False, row=2, col=1)
+    # Clean horizontal datetime axis
+    fig.update_xaxes(showgrid=False)
+    fig.update_xaxes(type="date", tickformat="%m/%d", tickangle=0, row=2, col=1)
     return _apply_crosshair_hover(fig)
 
 
