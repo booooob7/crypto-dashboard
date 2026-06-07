@@ -50,6 +50,13 @@ def test_price_history_chart_hover_includes_volume_and_visible_bars():
     assert fig.data[1].width is not None
 
 
+def test_price_history_chart_uses_category_dates_to_avoid_visual_gaps():
+    from dashboard.charts import price_history_chart
+    fig = price_history_chart(_price_df(), "bitcoin")
+    assert fig.layout.xaxis.type == "category"
+    assert list(fig.data[0].x) == ["2024-01-01", "2024-01-02"]
+
+
 def test_fear_greed_gauge_returns_figure_with_correct_value():
     from dashboard.charts import fear_greed_gauge
     fig = fear_greed_gauge(72, "Greed")
