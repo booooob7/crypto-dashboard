@@ -103,9 +103,10 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     fig.update_yaxes(gridcolor=_GRID, side="right", range=price_range, row=1, col=1)
     # Volume panel: y-axis on the right, no gridlines for a cleaner look
     fig.update_yaxes(gridcolor=_GRID, side="right", showgrid=False, row=2, col=1)
-    # Clean horizontal datetime axis
+    # Clean horizontal datetime axis. No forced tickformat — Plotly auto-picks
+    # time labels for intraday spans and date labels for multi-day spans.
     fig.update_xaxes(showgrid=False)
-    fig.update_xaxes(type="date", tickformat="%m/%d", tickangle=0, row=2, col=1)
+    fig.update_xaxes(type="date", tickangle=0, row=2, col=1)
     return _apply_crosshair_hover(fig)
 
 

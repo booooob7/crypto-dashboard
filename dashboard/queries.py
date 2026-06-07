@@ -11,6 +11,11 @@ def _get_client() -> Client:
     return create_client(url, key)
 
 
+# Ranges at or below this many days keep intraday (15-min) resolution;
+# longer ranges collapse to one daily point to stay readable.
+INTRADAY_MAX_DAYS = 7
+
+
 def normalize_price_history(df: pd.DataFrame) -> pd.DataFrame:
     """Collapse mixed daily/live snapshots into one daily point per UTC date."""
     if df.empty:
@@ -60,7 +65,12 @@ def get_latest_prices() -> pd.DataFrame:
 
 @st.cache_data(ttl=300)
 def get_price_history(coin_id: str, days: int = 7) -> pd.DataFrame:
-    """Price + volume history for one coin over N days."""
+    """Price + volume history for one coin over N days.
+
+    Short ranges (<= INTRADAY_MAX_DAYS) keep the raw 15-minute snapshots so the
+    intraday detail the ETL collects is actually visible. Longer ranges collapse
+    to one point per UTC day to stay readable.
+    """
     client = _get_client()
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     result = (client.table("prices")
@@ -70,8 +80,11 @@ def get_price_history(coin_id: str, days: int = 7) -> pd.DataFrame:
               .order("bucket_time")
               .execute())
     df = pd.DataFrame(result.data)
-    if not df.empty:
-        df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
+    if df.empty:
+        return df
+    df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
+    if days <= INTRADAY_MAX_DAYS:
+        return df  # intraday: keep raw 15-min snapshots
     return normalize_price_history(df)
 
 
