@@ -11,6 +11,25 @@ def _get_client() -> Client:
     return create_client(url, key)
 
 
+def normalize_price_history(df: pd.DataFrame) -> pd.DataFrame:
+    """Collapse mixed daily/live snapshots into one daily point per UTC date."""
+    if df.empty:
+        return df
+
+    normalized = df.copy()
+    normalized["bucket_time"] = pd.to_datetime(normalized["bucket_time"], utc=True)
+    normalized["date"] = normalized["bucket_time"].dt.floor("D")
+    normalized = (normalized
+                  .sort_values("bucket_time")
+                  .groupby("date", as_index=False)
+                  .agg(
+                      price_usd=("price_usd", "last"),
+                      volume_24h=("volume_24h", "sum"),
+                  )
+                  .rename(columns={"date": "bucket_time"}))
+    return normalized
+
+
 @st.cache_data(ttl=300)
 def get_latest_prices() -> pd.DataFrame:
     """Most recent price snapshot for each coin, sorted by rank.
@@ -53,7 +72,7 @@ def get_price_history(coin_id: str, days: int = 7) -> pd.DataFrame:
     df = pd.DataFrame(result.data)
     if not df.empty:
         df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
-    return df
+    return normalize_price_history(df)
 
 
 @st.cache_data(ttl=300)
