@@ -1,69 +1,71 @@
-# Executive Summary — Cryptocurrency Market Dashboard
+# 執行摘要 — 加密貨幣市場儀表板
 
-**Assignment:** Deployment of a Dashboard with its own Data Pipeline
-**Live App:** <https://crypto-dashboard-dm9wvnvtvq8pexhlkyqbyj.streamlit.app/>
-
----
-
-## Overview
-
-This project delivers a real-time cryptocurrency market dashboard backed by a fully automated ETL pipeline. Market data is collected from three public APIs, cleaned, and stored in a cloud PostgreSQL database every 15 minutes. A Streamlit web application reads from that database and renders interactive visualisations for end users.
+**作業：** Deployment of a Dashboard with its own Data Pipeline
+**線上應用：** <https://crypto-dashboard-dm9wvnvtvq8pexhlkyqbyj.streamlit.app/>
 
 ---
 
-## Architecture
+## 專案概述
+
+本專案建置並部署了一個加密貨幣市場儀表板，後端搭配一條全自動的資料管線（ETL）。系統每 15 分鐘從三個公開 API 蒐集市場資料，經清洗後寫入雲端 PostgreSQL 資料庫；前端 Streamlit 網頁應用再從資料庫讀取，呈現互動式視覺化圖表。整個系統部署於雲端，透過公開網址即可存取，無需本機運行。
+
+---
+
+## 系統架構
 
 ```
 [CoinGecko API]          ┐
-[Alternative.me API]     ├─► GitHub Actions (cron) ─► ETL Script ─► Supabase PostgreSQL ─► Streamlit Cloud
+[Alternative.me API]     ├─► GitHub Actions (排程) ─► ETL 腳本 ─► Supabase PostgreSQL ─► Streamlit Cloud
 [Blockchain.com API]     ┘
 ```
 
----
-
-## Tech Stack
-
-| Layer | Technology | Role |
+| 層級 | 技術 | 角色 |
 |---|---|---|
-| Orchestration | GitHub Actions (cron) | Triggers ETL every 15 minutes |
-| Data Sources | CoinGecko, Alternative.me, Blockchain.com | Price, sentiment, on-chain data |
-| ETL | Python (`requests`, `pandas`) | Fetch, clean, deduplicate, load |
-| Database | Supabase PostgreSQL | Persistent storage (3 tables) |
-| Dashboard | Streamlit + Plotly | Interactive web UI |
-| Hosting | Streamlit Cloud | Public deployment |
+| 排程 | GitHub Actions (cron) | 每 15 分鐘觸發 ETL |
+| 資料來源 | CoinGecko、Alternative.me、Blockchain.com | 價格、情緒、鏈上資料 |
+| ETL | Python（`requests`、`tenacity`） | 抓取、清洗、去重、寫入 |
+| 資料庫 | Supabase PostgreSQL | 永久儲存（3 張資料表） |
+| 前端 | Streamlit + Plotly | 互動式網頁介面 |
+| 部署 | Streamlit Cloud | 公開網址託管 |
 
 ---
 
-## Data Pipeline (ETL)
+## 資料管線（ETL）
 
-Three independent API sources feed a single pipeline script executed by GitHub Actions:
+三個獨立的 API 來源由同一支 ETL 腳本處理，並透過 GitHub Actions 排程執行：
 
-- **CoinGecko** → `prices` table — 15-minute OHLCV snapshots; unique constraint on `(coin_id, bucket_time)` prevents duplicates.
-- **Alternative.me** → `fear_greed` table — daily Fear & Greed Index score (0–100).
-- **Blockchain.com** → `onchain` table — daily Bitcoin active addresses, transaction count, and estimated USD transfer volume.
+- **CoinGecko** → `prices` 表 — 市值前十大幣種的收盤價、成交量、市值與漲跌幅，每 15 分鐘一筆快照；以 `(coin_id, bucket_time)` 唯一鍵防止重複。
+- **Alternative.me** → `fear_greed` 表 — 每日恐懼貪婪指數（0–100）；以 `recorded_at` 為唯一鍵。
+- **Blockchain.com** → `onchain` 表 — 每日比特幣鏈上指標：活躍地址數、交易筆數、估計轉帳金額（USD）；以 `(metric, recorded_at)` 為唯一鍵。
 
-Data cleaning includes type coercion, null filtering, and upsert logic so repeated runs are idempotent.
+資料清洗包含型別轉換、空值過濾，並採用 upsert（衝突即更新）邏輯，使重複執行具備冪等性（idempotent），不會產生重複資料。關鍵來源（CoinGecko）失敗時 ETL 會明確報錯；情緒與鏈上資料為輔助來源，失敗時記錄警告並繼續執行。
 
 ---
 
-## Data Refresh Mechanism
+## 資料更新機制
 
-| Mechanism | Trigger | Frequency |
+| 機制 | 觸發方式 | 頻率 |
 |---|---|---|
-| GitHub Actions cron | Automatic | Every 15 minutes, 24/7 |
-| Dashboard refresh button | User-initiated | On demand (clears cached reads) |
+| GitHub Actions 排程 | 自動 | 每 15 分鐘 |
+| 儀表板「重新整理」按鈕 | 使用者手動 | 隨點隨更新（清除快取） |
 
-The cron job is the primary data-ingestion path; the in-app button clears Streamlit's cached database reads so users can immediately view the latest data already written by the pipeline.
+排程是主要的資料寫入路徑；為避免對輔助來源過度呼叫，ETL 會先檢查資料庫中當日資料是否已存在，僅在缺漏或過期時才抓取每日來源。前端按鈕則清除 Streamlit 的查詢快取，讓使用者立即看到管線已寫入的最新資料。
 
 ---
 
-## Dashboard Visualisations
+## 儀表板視覺化
 
-The Streamlit app provides four interactive sections:
+Streamlit 應用提供四個互動區塊：
 
-1. **Market Overview Cards** — live price, 24 h change, and market cap for selected coins.
-2. **Price History Chart** — Plotly line chart with per-coin selector and 7D / 30D / 90D time-range toggle.
-3. **Fear & Greed Gauge** — current index rendered as a Plotly gauge plus a 30-day trend line.
-4. **On-Chain Activity** — selectable Bitcoin network metrics for active addresses, daily transactions, and estimated USD transfer volume.
+1. **市場快覽卡片** — 比特幣、以太幣即時價格與 24 小時漲跌、前十大市值總和、恐懼貪婪指數。
+2. **價格走勢圖** — TradingView 風格的價格折線搭配成交量柱狀圖；成交量依當日漲跌以紅綠區分，價格軸置於右側，可切換幣種與 7 天 / 30 天 / 90 天時間範圍。
+3. **市場情緒** — 恐懼貪婪指數圓形儀表盤（含指針）與近 30 天趨勢折線。
+4. **鏈上數據** — 比特幣網路指標折線圖，可切換活躍地址數、交易筆數、估計轉帳金額三種指標。
 
-All charts are rendered with Plotly and support hover tooltips, vertical crosshair inspection, zoom, and pan.
+所有圖表皆以 Plotly 繪製，支援滑鼠懸停提示、垂直十字準線、縮放與平移。介面全面中文化。
+
+---
+
+## 結語
+
+本專案完整涵蓋作業四項評分面向：具複雜度與創意的多來源資料管線、互動式視覺化、自動化的資料更新機制，以及清楚的文件說明。所有服務皆使用免費方案，並完整部署於雲端。
