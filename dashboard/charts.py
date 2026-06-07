@@ -51,7 +51,7 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     at zero.
     """
     df = df.copy()
-    df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
+    df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True).dt.tz_convert("Asia/Taipei")
 
     # Volume bar colours by daily price direction (first bar treated as "up")
     prices = df["price_usd"].tolist()

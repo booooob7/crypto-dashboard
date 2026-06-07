@@ -1,3 +1,5 @@
+from datetime import datetime, timezone, timedelta
+
 import pandas as pd
 import streamlit as st
 from path_bootstrap import ensure_project_root_on_path
@@ -37,6 +39,18 @@ def format_delta(value) -> str | None:
     return f"{value:.2f}%" if pd.notna(value) else None
 
 
+def to_taipei(iso_utc: str) -> str:
+    """Convert a UTC ISO timestamp to a readable Taipei-time string."""
+    if not iso_utc or iso_utc == "N/A":
+        return "N/A"
+    try:
+        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        local = dt.astimezone(timezone(timedelta(hours=8)))
+        return local.strftime("%Y-%m-%d %H:%M")
+    except (ValueError, TypeError):
+        return iso_utc
+
+
 ONCHAIN_METRIC_LABELS = {
     "n-unique-addresses": "活躍地址數",
     "n-transactions": "每日交易數",
@@ -63,7 +77,7 @@ def onchain_delta(df: pd.DataFrame) -> str | None:
 with st.sidebar:
     st.header("控制面板")
     last_updated = get_last_updated()
-    st.caption(f"最後更新：{last_updated}")
+    st.caption(f"最後更新：{to_taipei(last_updated)}（台北時間）")
     if st.button("🔄 重新整理資料"):
         st.cache_data.clear()
         st.rerun()
