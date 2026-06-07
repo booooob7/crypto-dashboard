@@ -49,11 +49,18 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
         x=df["bucket_time"], y=df["price_usd"],
         mode="lines", name="價格",
         line=dict(color=_GREEN, width=2),
+        customdata=df[["volume_24h"]],
+        hovertemplate=(
+            "價格：$%{y:,.2f}<br>"
+            "交易量：$%{customdata[0]:,.0f}"
+            "<extra></extra>"
+        ),
     ), row=1, col=1)
     fig.add_trace(go.Bar(
         x=df["bucket_time"], y=df["volume_24h"],
         name="交易量",
-        marker_color="rgba(0,212,170,0.3)",
+        marker_color="rgba(76,201,240,0.65)",
+        hovertemplate="交易量：$%{y:,.0f}<extra></extra>",
     ), row=2, col=1)
     fig.update_layout(
         title=f"{coin_id.capitalize()} 價格與交易量",

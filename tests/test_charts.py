@@ -41,6 +41,14 @@ def test_price_history_chart_uses_unified_crosshair_hover():
     assert fig.layout.xaxis2.showspikes is True
 
 
+def test_price_history_chart_hover_includes_volume_and_visible_bars():
+    from dashboard.charts import price_history_chart
+    fig = price_history_chart(_price_df(), "bitcoin")
+    assert "交易量" in fig.data[0].hovertemplate
+    assert fig.data[0].customdata[0][0] == 25e9
+    assert fig.data[1].marker.color == "rgba(76,201,240,0.65)"
+
+
 def test_fear_greed_gauge_returns_figure_with_correct_value():
     from dashboard.charts import fear_greed_gauge
     fig = fear_greed_gauge(72, "Greed")
