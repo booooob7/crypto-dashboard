@@ -24,7 +24,7 @@ def normalize_price_history(df: pd.DataFrame) -> pd.DataFrame:
                   .groupby("date", as_index=False)
                   .agg(
                       price_usd=("price_usd", "last"),
-                      volume_24h=("volume_24h", "sum"),
+                      volume_24h=("volume_24h", "last"),
                   )
                   .rename(columns={"date": "bucket_time"}))
     return normalized

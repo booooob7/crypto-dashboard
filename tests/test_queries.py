@@ -23,4 +23,4 @@ def test_normalize_price_history_to_daily_buckets_fills_mixed_frequency_gaps():
         "2026-06-07",
     ]
     assert normalized.iloc[-1]["price_usd"] == 62600.0
-    assert normalized.iloc[-1]["volume_24h"] == 61e9
+    assert normalized.iloc[-1]["volume_24h"] == 31e9
