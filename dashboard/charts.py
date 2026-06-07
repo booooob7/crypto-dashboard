@@ -37,6 +37,16 @@ def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
     return fig
 
 
+def _bar_width_ms(series: pd.Series) -> int | None:
+    times = pd.to_datetime(series, utc=True).sort_values()
+    if len(times) < 2:
+        return None
+    intervals = times.diff().dropna().dt.total_seconds()
+    if intervals.empty:
+        return None
+    return int(intervals.median() * 1000 * 0.7)
+
+
 def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     """Dual-panel: price line (top 70%) + volume bars (bottom 30%), shared x-axis."""
     fig = make_subplots(
@@ -59,7 +69,8 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     fig.add_trace(go.Bar(
         x=df["bucket_time"], y=df["volume_24h"],
         name="交易量",
-        marker_color="rgba(76,201,240,0.65)",
+        marker_color="rgba(76,201,240,0.95)",
+        width=_bar_width_ms(df["bucket_time"]),
         hovertemplate="交易量：$%{y:,.0f}<extra></extra>",
     ), row=2, col=1)
     fig.update_layout(

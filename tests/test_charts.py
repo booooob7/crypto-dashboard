@@ -46,7 +46,8 @@ def test_price_history_chart_hover_includes_volume_and_visible_bars():
     fig = price_history_chart(_price_df(), "bitcoin")
     assert "交易量" in fig.data[0].hovertemplate
     assert fig.data[0].customdata[0][0] == 25e9
-    assert fig.data[1].marker.color == "rgba(76,201,240,0.65)"
+    assert fig.data[1].marker.color == "rgba(76,201,240,0.95)"
+    assert fig.data[1].width is not None
 
 
 def test_fear_greed_gauge_returns_figure_with_correct_value():
