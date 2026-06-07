@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>執行摘要 — 加密貨幣市場儀表板</title>
+<style>
+  @page { size: A4; margin: 9mm 11mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+    font-size: 8.8pt;
+    line-height: 1.3;
+    color: #1a1a1a;
+    margin: 0;
+  }
+  h1 { font-size: 14pt; margin: 0 0 2pt; }
+  h2 {
+    font-size: 10pt; margin: 6pt 0 2pt;
+    border-bottom: 1.2px solid #00b894; padding-bottom: 1.5pt; color: #006e5b;
+  }
+  .meta { font-size: 8pt; color: #555; margin-bottom: 3pt; }
+  .meta a { color: #006e5b; }
+  p { margin: 2pt 0; }
+  ul { margin: 2pt 0; padding-left: 16px; }
+  li { margin: 1pt 0; }
+  table { width: 100%; border-collapse: collapse; margin: 3pt 0; font-size: 8.2pt; }
+  th, td { border: 1px solid #ccc; padding: 2pt 5pt; text-align: left; }
+  th { background: #eafaf6; }
+  pre {
+    background: #f4f6f8; border: 1px solid #ddd; border-radius: 3px;
+    padding: 4pt 6pt; font-size: 7pt; line-height: 1.2;
+    font-family: "SF Mono", Menlo, Consolas, monospace; overflow: hidden; margin: 3pt 0;
+  }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8pt; }
+  strong { color: #000; }
+</style>
+</head>
+<body>
+
+<h1>執行摘要 — 加密貨幣市場儀表板</h1>
+<div class="meta">
+  <strong>作業：</strong>Deployment of a Dashboard with its own Data Pipeline<br>
+  <strong>線上應用：</strong><a href="https://crypto-dashboard-dm9wvnvtvq8pexhlkyqbyj.streamlit.app/">https://crypto-dashboard-dm9wvnvtvq8pexhlkyqbyj.streamlit.app/</a>
+</div>
+
+<h2>專案概述</h2>
+<p>本專案建置並部署了一個加密貨幣市場儀表板，後端搭配一條全自動的資料管線（ETL）。系統每 15 分鐘從三個公開 API 蒐集市場資料，經清洗後寫入雲端 PostgreSQL 資料庫；前端 Streamlit 網頁應用再從資料庫讀取，呈現互動式視覺化圖表。整個系統部署於雲端，透過公開網址即可存取，無需本機運行。</p>
+
+<h2>系統架構</h2>
+<pre>[CoinGecko API]          ┐
+[Alternative.me API]     ├─► GitHub Actions (排程) ─► ETL 腳本 ─► Supabase PostgreSQL ─► Streamlit Cloud
+[Blockchain.com API]     ┘</pre>
+<table>
+  <tr><th>層級</th><th>技術</th><th>角色</th></tr>
+  <tr><td>排程</td><td>GitHub Actions (cron)</td><td>每 15 分鐘觸發 ETL</td></tr>
+  <tr><td>資料來源</td><td>CoinGecko、Alternative.me、Blockchain.com</td><td>價格、情緒、鏈上資料</td></tr>
+  <tr><td>ETL</td><td>Python（requests、tenacity）</td><td>抓取、清洗、去重、寫入</td></tr>
+  <tr><td>資料庫</td><td>Supabase PostgreSQL</td><td>永久儲存（3 張資料表）</td></tr>
+  <tr><td>前端</td><td>Streamlit + Plotly</td><td>互動式網頁介面</td></tr>
+  <tr><td>部署</td><td>Streamlit Cloud</td><td>公開網址託管</td></tr>
+</table>
+
+<h2>資料管線（ETL）</h2>
+<p>三個獨立的 API 來源由同一支 ETL 腳本處理，並透過 GitHub Actions 排程執行：</p>
+<ul>
+  <li><strong>CoinGecko</strong> → <code>prices</code> 表：市值前十大幣種的收盤價、成交量、市值與漲跌幅，每 15 分鐘一筆快照；以 <code>(coin_id, bucket_time)</code> 唯一鍵防止重複。</li>
+  <li><strong>Alternative.me</strong> → <code>fear_greed</code> 表：每日恐懼貪婪指數（0–100）；以 <code>recorded_at</code> 為唯一鍵。</li>
+  <li><strong>Blockchain.com</strong> → <code>onchain</code> 表：每日比特幣鏈上指標（活躍地址數、交易筆數、估計轉帳金額 USD）；以 <code>(metric, recorded_at)</code> 為唯一鍵。</li>
+</ul>
+<p>資料清洗包含型別轉換、空值過濾，並採用 upsert（衝突即更新）邏輯，使重複執行具備冪等性（idempotent）。關鍵來源（CoinGecko）失敗時 ETL 明確報錯；情緒與鏈上資料為輔助來源，失敗時記錄警告並繼續執行。</p>
+
+<h2>資料更新機制</h2>
+<table>
+  <tr><th>機制</th><th>觸發方式</th><th>頻率</th></tr>
+  <tr><td>GitHub Actions 排程</td><td>自動</td><td>每 15 分鐘</td></tr>
+  <tr><td>儀表板「重新整理」按鈕</td><td>使用者手動</td><td>隨點隨更新（清除快取）</td></tr>
+</table>
+<p>排程是主要的資料寫入路徑；為避免對輔助來源過度呼叫，ETL 會先檢查資料庫中當日資料是否已存在，僅在缺漏或過期時才抓取每日來源。前端按鈕則清除 Streamlit 的查詢快取，讓使用者立即看到最新資料。</p>
+
+<h2>儀表板視覺化</h2>
+<p>Streamlit 應用提供四個互動區塊：</p>
+<ul>
+  <li><strong>市場快覽卡片</strong>：比特幣、以太幣即時價格與 24 小時漲跌、前十大市值總和、恐懼貪婪指數。</li>
+  <li><strong>價格走勢圖</strong>：TradingView 風格折線搭配成交量柱狀圖，成交量依漲跌以紅綠區分、價格軸置右。圖表依範圍自動調整解析度——<strong>7 天內顯示小時級日內資料、30/90 天收斂為日線</strong>，使高頻更新在短期圖可見、長期圖保持易讀。</li>
+  <li><strong>市場情緒</strong>：恐懼貪婪指數圓形儀表盤（含指針）與近 30 天趨勢折線。</li>
+  <li><strong>鏈上數據</strong>：比特幣網路指標折線圖，可切換活躍地址數、交易筆數、估計轉帳金額三種指標。</li>
+</ul>
+<p>所有圖表皆以 Plotly 繪製，支援滑鼠懸停提示、垂直十字準線、縮放與平移。時間一律以台北時間（UTC+8）顯示，介面全面中文化。</p>
+
+</body>
+</html>
