@@ -33,6 +33,14 @@ def test_price_history_chart_returns_figure_with_two_traces():
     assert len(fig.data) == 2  # price line + volume bar
 
 
+def test_price_history_chart_uses_unified_crosshair_hover():
+    from dashboard.charts import price_history_chart
+    fig = price_history_chart(_price_df(), "bitcoin")
+    assert fig.layout.hovermode == "x unified"
+    assert fig.layout.xaxis.showspikes is True
+    assert fig.layout.xaxis2.showspikes is True
+
+
 def test_fear_greed_gauge_returns_figure_with_correct_value():
     from dashboard.charts import fear_greed_gauge
     fig = fear_greed_gauge(72, "Greed")

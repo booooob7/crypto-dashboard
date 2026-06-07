@@ -1,7 +1,7 @@
 # Executive Summary — Cryptocurrency Market Dashboard
 
 **Assignment:** Deployment of a Dashboard with its own Data Pipeline
-**Live App:** [YOUR STREAMLIT URL]
+**Live App:** <https://crypto-dashboard-dm9wvnvtvq8pexhlkyqbyj.streamlit.app/>
 
 ---
 
@@ -51,9 +51,9 @@ Data cleaning includes type coercion, null filtering, and upsert logic so repeat
 | Mechanism | Trigger | Frequency |
 |---|---|---|
 | GitHub Actions cron | Automatic | Every 15 minutes, 24/7 |
-| Manual refresh button | User-initiated | On demand (in-app) |
+| Dashboard refresh button | User-initiated | On demand (clears cached reads) |
 
-The cron job is the primary refresh path; the in-app button lets users force an immediate update without waiting for the next scheduled run.
+The cron job is the primary data-ingestion path; the in-app button clears Streamlit's cached database reads so users can immediately view the latest data already written by the pipeline.
 
 ---
 
@@ -66,4 +66,4 @@ The Streamlit app provides four interactive sections:
 3. **Fear & Greed Gauge** — current index rendered as a Plotly gauge plus a 30-day trend line.
 4. **On-Chain Activity** — bar chart of daily active Bitcoin addresses.
 
-All charts are rendered with Plotly and support hover tooltips, zoom, and pan.
+All charts are rendered with Plotly and support hover tooltips, vertical crosshair inspection, zoom, and pan.

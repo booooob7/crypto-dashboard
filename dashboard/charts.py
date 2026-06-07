@@ -9,6 +9,22 @@ _YELLOW = "#e9c46a"
 _BLUE = "#4cc9f0"
 
 
+def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
+    fig.update_layout(
+        hovermode="x unified",
+        hoverlabel=dict(bgcolor="#151926", font_size=13),
+    )
+    fig.update_xaxes(
+        showspikes=True,
+        spikemode="across",
+        spikesnap="cursor",
+        spikethickness=1,
+        spikecolor="rgba(255,255,255,0.55)",
+        spikedash="solid",
+    )
+    return fig
+
+
 def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     """Dual-panel: price line (top 70%) + volume bars (bottom 30%), shared x-axis."""
     fig = make_subplots(
@@ -37,7 +53,7 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     )
     fig.update_xaxes(gridcolor=_GRID)
     fig.update_yaxes(gridcolor=_GRID)
-    return fig
+    return _apply_crosshair_hover(fig)
 
 
 def fear_greed_gauge(value: int, label: str) -> go.Figure:
@@ -89,7 +105,7 @@ def fear_greed_history_chart(df: pd.DataFrame) -> go.Figure:
     )
     fig.update_xaxes(gridcolor=_GRID)
     fig.update_yaxes(gridcolor=_GRID)
-    return fig
+    return _apply_crosshair_hover(fig)
 
 
 def onchain_chart(df: pd.DataFrame, metric_label: str) -> go.Figure:
@@ -110,4 +126,4 @@ def onchain_chart(df: pd.DataFrame, metric_label: str) -> go.Figure:
     )
     fig.update_xaxes(gridcolor=_GRID)
     fig.update_yaxes(gridcolor=_GRID)
-    return fig
+    return _apply_crosshair_hover(fig)
