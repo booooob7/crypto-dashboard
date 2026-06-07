@@ -1,5 +1,9 @@
 import pandas as pd
 import streamlit as st
+from path_bootstrap import ensure_project_root_on_path
+
+ensure_project_root_on_path(__file__)
+
 from dashboard.queries import (
     get_latest_prices,
     get_price_history,
