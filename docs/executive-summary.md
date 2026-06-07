@@ -40,7 +40,7 @@ Three independent API sources feed a single pipeline script executed by GitHub A
 
 - **CoinGecko** → `prices` table — 15-minute OHLCV snapshots; unique constraint on `(coin_id, bucket_time)` prevents duplicates.
 - **Alternative.me** → `fear_greed` table — daily Fear & Greed Index score (0–100).
-- **Blockchain.com** → `onchain` table — daily active Bitcoin addresses.
+- **Blockchain.com** → `onchain` table — daily Bitcoin active addresses, transaction count, and estimated USD transfer volume.
 
 Data cleaning includes type coercion, null filtering, and upsert logic so repeated runs are idempotent.
 
@@ -64,6 +64,6 @@ The Streamlit app provides four interactive sections:
 1. **Market Overview Cards** — live price, 24 h change, and market cap for selected coins.
 2. **Price History Chart** — Plotly line chart with per-coin selector and 7D / 30D / 90D time-range toggle.
 3. **Fear & Greed Gauge** — current index rendered as a Plotly gauge plus a 30-day trend line.
-4. **On-Chain Activity** — bar chart of daily active Bitcoin addresses.
+4. **On-Chain Activity** — selectable Bitcoin network metrics for active addresses, daily transactions, and estimated USD transfer volume.
 
 All charts are rendered with Plotly and support hover tooltips, vertical crosshair inspection, zoom, and pan.

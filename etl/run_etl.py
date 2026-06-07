@@ -5,7 +5,7 @@ from etl.db import (
 )
 from etl.fetch_prices import fetch_top10_prices
 from etl.fetch_fear_greed import fetch_fear_greed
-from etl.fetch_onchain import fetch_all_onchain
+from etl.fetch_onchain import ONCHAIN_METRICS, fetch_all_onchain
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +37,7 @@ def run() -> None:
         log.info("Fear & Greed already up-to-date, skipping")
 
     # ── ENRICHMENT: on-chain — fetch only when yesterday's row is missing ───
-    if not onchain_has_yesterday(client):
+    if not all(onchain_has_yesterday(client, metric) for metric in ONCHAIN_METRICS):
         log.info("Fetching on-chain metrics…")
         try:
             rows = fetch_all_onchain()

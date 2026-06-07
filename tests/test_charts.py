@@ -48,6 +48,13 @@ def test_fear_greed_gauge_returns_figure_with_correct_value():
     assert fig.data[0].value == 72
 
 
+def test_fear_greed_gauge_localizes_label_and_draws_needle():
+    from dashboard.charts import fear_greed_gauge
+    fig = fear_greed_gauge(12, "Extreme Fear")
+    assert fig.data[0].title.text == "極度恐懼"
+    assert any(shape.type == "line" for shape in fig.layout.shapes)
+
+
 def test_fear_greed_history_chart_returns_figure():
     from dashboard.charts import fear_greed_history_chart
     fig = fear_greed_history_chart(_fg_df())

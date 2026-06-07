@@ -3,6 +3,11 @@ from datetime import datetime, timezone
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 BLOCKCHAIN_BASE = "https://api.blockchain.info/charts"
+ONCHAIN_METRICS = (
+    "n-unique-addresses",
+    "n-transactions",
+    "estimated-transaction-volume-usd",
+)
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -32,5 +37,8 @@ def fetch_metric(metric_name: str, timespan: str = "30days") -> list[dict]:
 
 
 def fetch_all_onchain() -> list[dict]:
-    """Fetch active BTC addresses (primary on-chain metric)."""
-    return fetch_metric("n-unique-addresses")
+    """Fetch the dashboard's BTC on-chain metric set."""
+    rows = []
+    for metric in ONCHAIN_METRICS:
+        rows.extend(fetch_metric(metric))
+    return rows

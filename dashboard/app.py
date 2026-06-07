@@ -16,6 +16,7 @@ from dashboard.charts import (
     fear_greed_gauge,
     fear_greed_history_chart,
     onchain_chart,
+    fear_greed_label_zh,
 )
 
 st.set_page_config(
@@ -34,6 +35,29 @@ def format_delta(value) -> str | None:
     `NaN is not None` is True, so a plain `is not None` check would render 'nan%'.
     """
     return f"{value:.2f}%" if pd.notna(value) else None
+
+
+ONCHAIN_METRIC_LABELS = {
+    "n-unique-addresses": "活躍地址數",
+    "n-transactions": "每日交易數",
+    "estimated-transaction-volume-usd": "鏈上交易量 USD",
+}
+
+
+def format_onchain_value(metric: str, value: float) -> str:
+    if metric == "estimated-transaction-volume-usd":
+        return f"${value / 1e9:.2f}B"
+    return f"{value:,.0f}"
+
+
+def onchain_delta(df: pd.DataFrame) -> str | None:
+    if len(df) < 8:
+        return None
+    latest = df.iloc[-1]["value"]
+    previous = df.iloc[-8]["value"]
+    if not previous:
+        return None
+    return f"{((latest - previous) / previous) * 100:.2f}% vs 7 天前"
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -71,7 +95,12 @@ if not prices_df.empty:
         st.metric("🌐 前十大市值", f"${top10_mcap / 1e12:.2f}T")
     with col4:
         if fg_current is not None:
-            st.metric("🧭 恐懼貪婪指數", f"{fg_current} — {fg_label}")
+            st.metric(
+                "🧭 恐懼貪婪指數",
+                f"{fg_current}",
+                fear_greed_label_zh(fg_label),
+                delta_color="off",
+            )
 else:
     st.warning("尚無價格資料 — 請先執行 seed 腳本。")
 
@@ -118,11 +147,22 @@ with col_trend:
 st.divider()
 
 # ── Section 4: On-Chain Metrics ───────────────────────────────────────────────
-st.subheader("鏈上數據：比特幣活躍地址數（近 30 天）")
-onchain_df = get_onchain_history("n-unique-addresses", 30)
+st.subheader("鏈上數據分析")
+selected_onchain_metric = st.selectbox(
+    "選擇鏈上指標",
+    list(ONCHAIN_METRIC_LABELS.keys()),
+    format_func=lambda metric: ONCHAIN_METRIC_LABELS[metric],
+)
+onchain_df = get_onchain_history(selected_onchain_metric, 30)
 if not onchain_df.empty:
+    latest_onchain = onchain_df.iloc[-1]["value"]
+    st.metric(
+        f"比特幣{ONCHAIN_METRIC_LABELS[selected_onchain_metric]}",
+        format_onchain_value(selected_onchain_metric, latest_onchain),
+        onchain_delta(onchain_df),
+    )
     st.plotly_chart(
-        onchain_chart(onchain_df, "比特幣活躍地址數"),
+        onchain_chart(onchain_df, f"比特幣{ONCHAIN_METRIC_LABELS[selected_onchain_metric]}"),
         use_container_width=True,
     )
 else:

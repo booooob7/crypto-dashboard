@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -7,6 +8,17 @@ _GRID = "#1e2130"
 _GREEN = "#00d4aa"
 _YELLOW = "#e9c46a"
 _BLUE = "#4cc9f0"
+
+
+def fear_greed_label_zh(label: str) -> str:
+    labels = {
+        "Extreme Fear": "極度恐懼",
+        "Fear": "恐懼",
+        "Neutral": "中性",
+        "Greed": "貪婪",
+        "Extreme Greed": "極度貪婪",
+    }
+    return labels.get(label, label)
 
 
 def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
@@ -59,10 +71,17 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
 def fear_greed_gauge(value: int, label: str) -> go.Figure:
     """Radial gauge for current Fear & Greed value (0-100)."""
     color = "#e63946" if value < 40 else "#f4a261" if value < 60 else "#2a9d8f"
+    needle_angle = math.radians(180 - (max(0, min(value, 100)) / 100 * 180))
+    needle_center = (0.5, 0.08)
+    needle_length = 0.37
+    needle_tip = (
+        needle_center[0] + needle_length * math.cos(needle_angle),
+        needle_center[1] + needle_length * math.sin(needle_angle),
+    )
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        title=dict(text=label, font=dict(size=18, color="white")),
+        title=dict(text=fear_greed_label_zh(label), font=dict(size=18, color="white")),
         gauge=dict(
             axis=dict(range=[0, 100], tickcolor="white"),
             bar=dict(color=color),
@@ -80,6 +99,29 @@ def fear_greed_gauge(value: int, label: str) -> go.Figure:
         font=dict(color="white"),
         height=250,
         margin=dict(l=20, r=20, t=40, b=20),
+        shapes=[
+            dict(
+                type="line",
+                xref="paper",
+                yref="paper",
+                x0=needle_center[0],
+                y0=needle_center[1],
+                x1=needle_tip[0],
+                y1=needle_tip[1],
+                line=dict(color="white", width=4),
+            ),
+            dict(
+                type="circle",
+                xref="paper",
+                yref="paper",
+                x0=needle_center[0] - 0.018,
+                y0=needle_center[1] - 0.018,
+                x1=needle_center[0] + 0.018,
+                y1=needle_center[1] + 0.018,
+                fillcolor="white",
+                line=dict(color="white"),
+            ),
+        ],
     )
     return fig
 

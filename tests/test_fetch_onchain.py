@@ -29,8 +29,9 @@ def test_fetch_metric_returns_correct_shape():
 
 
 def test_fetch_all_onchain_returns_list():
-    from etl.fetch_onchain import fetch_all_onchain
+    from etl.fetch_onchain import ONCHAIN_METRICS, fetch_all_onchain
     with patch("requests.get", return_value=_mock_get(MOCK_ONCHAIN_RESPONSE)):
         rows = fetch_all_onchain()
     assert isinstance(rows, list)
-    assert all(r["metric"] == "n-unique-addresses" for r in rows)
+    assert {r["metric"] for r in rows} == set(ONCHAIN_METRICS)
+    assert len(rows) == len(ONCHAIN_METRICS) * 2
