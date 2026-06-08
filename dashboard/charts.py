@@ -104,13 +104,18 @@ def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volu
     show_rsi = lower_panel == "rsi"
     if show_rsi:
         rsi = compute_rsi(df["price_usd"])
+        # Shaded zones: overbought (70–100) red, oversold (0–30) green
+        fig.add_hrect(y0=70, y1=100, fillcolor="rgba(230,57,70,0.13)",
+                      line_width=0, row=2, col=1)
+        fig.add_hrect(y0=0, y1=30, fillcolor="rgba(0,212,170,0.13)",
+                      line_width=0, row=2, col=1)
         fig.add_trace(go.Scatter(
             x=df["bucket_time"], y=rsi,
             name="RSI", mode="lines",
             line=dict(color="#c792ea", width=1.8),
             hovertemplate="RSI：%{y:.1f}<extra></extra>",
         ), row=2, col=1)
-        # 70 / 30 reference lines (overbought / oversold)
+        # 70 / 30 reference lines (overbought / oversold thresholds)
         fig.add_hline(y=70, line=dict(color="#e63946", width=1, dash="dot"), row=2, col=1)
         fig.add_hline(y=30, line=dict(color="#00d4aa", width=1, dash="dot"), row=2, col=1)
     else:
