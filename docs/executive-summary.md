@@ -34,7 +34,7 @@
 
 三個獨立的 API 來源由同一支 ETL 腳本處理，並透過 GitHub Actions 排程執行：
 
-- **CoinGecko** → `prices` 表 — 市值前十大幣種的收盤價、成交量、市值與漲跌幅，每 15 分鐘一筆快照；以 `(coin_id, bucket_time)` 唯一鍵防止重複。
+- **CoinGecko** → `prices` 表 — 市值前十大幣種的市場價格（每個時間點的即時價格快照，非 OHLC）、成交量、市值與漲跌幅，每 15 分鐘一筆快照；以 `(coin_id, bucket_time)` 唯一鍵防止重複。
 - **Alternative.me** → `fear_greed` 表 — 每日恐懼貪婪指數（0–100）；以 `recorded_at` 為唯一鍵。
 - **Blockchain.com** → `onchain` 表 — 每日比特幣鏈上指標：活躍地址數、交易筆數、估計轉帳金額（USD）；以 `(metric, recorded_at)` 為唯一鍵。
 
