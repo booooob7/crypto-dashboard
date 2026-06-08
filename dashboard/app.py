@@ -135,9 +135,15 @@ with col_b:
     days_map = {"7天": 7, "30天": 30, "90天": 90}
     selected_range = st.radio("時間範圍", list(days_map.keys()), horizontal=True)
 
+lower_panel_map = {"成交量": "volume", "RSI": "rsi"}
+selected_lower = st.radio("下方指標", list(lower_panel_map.keys()), horizontal=True, key="lower_panel")
+
 history_df = get_price_history(selected_coin, days_map[selected_range])
 if not history_df.empty:
-    st.plotly_chart(price_history_chart(history_df, selected_coin), use_container_width=True)
+    st.plotly_chart(
+        price_history_chart(history_df, selected_coin, lower_panel_map[selected_lower]),
+        use_container_width=True,
+    )
 else:
     st.info("尚無價格歷史資料 — 請先執行 seed 腳本，再等待 ETL 執行。")
 

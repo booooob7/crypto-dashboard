@@ -96,6 +96,35 @@ def test_onchain_chart_returns_figure():
     assert len(fig.data) == 1
 
 
+def test_compute_rsi_all_gains_approaches_100():
+    from dashboard.charts import compute_rsi
+    prices = pd.Series([float(i) for i in range(1, 30)])  # strictly rising
+    rsi = compute_rsi(prices)
+    assert round(rsi.iloc[-1], 1) == 100.0
+
+
+def test_compute_rsi_all_losses_approaches_0():
+    from dashboard.charts import compute_rsi
+    prices = pd.Series([float(i) for i in range(30, 1, -1)])  # strictly falling
+    rsi = compute_rsi(prices)
+    assert round(rsi.iloc[-1], 1) == 0.0
+
+
+def test_price_history_chart_rsi_panel_has_reference_lines():
+    from dashboard.charts import price_history_chart
+    dates = pd.date_range("2026-01-01", periods=20, freq="D", tz="UTC")
+    df = pd.DataFrame({
+        "bucket_time": dates,
+        "price_usd": [100 + i for i in range(20)],
+        "volume_24h": [1e9] * 20,
+    })
+    fig = price_history_chart(df, "bitcoin", lower_panel="rsi")
+    # RSI line present and 70/30 reference lines drawn as shapes
+    assert any(t.name == "RSI" for t in fig.data)
+    ys = [s.y0 for s in fig.layout.shapes]
+    assert 70 in ys and 30 in ys
+
+
 def test_correlation_heatmap_returns_square_matrix():
     from dashboard.charts import correlation_heatmap
     dates = pd.date_range("2026-01-01", periods=10, freq="D")

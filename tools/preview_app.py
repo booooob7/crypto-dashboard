@@ -104,8 +104,12 @@ with col_b:
     days_map = {"7天": 7, "30天": 30, "90天": 90}
     rng_label = st.radio("時間範圍", list(days_map), horizontal=True)
 base = float(prices_df[prices_df.coin_id == sel].iloc[0].price_usd)
-st.plotly_chart(price_history_chart(make_price_history(base, days_map[rng_label]), sel),
-                use_container_width=True)
+lower_map = {"成交量": "volume", "RSI": "rsi"}
+lower_sel = st.radio("下方指標", list(lower_map), horizontal=True)
+st.plotly_chart(
+    price_history_chart(make_price_history(base, days_map[rng_label]), sel, lower_map[lower_sel]),
+    use_container_width=True,
+)
 st.divider()
 
 # Section 3 — sentiment

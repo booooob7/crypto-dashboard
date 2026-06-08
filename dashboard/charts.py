@@ -39,9 +39,27 @@ def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
 
 _VOL_UP = "rgba(0,212,170,0.55)"     # 漲：綠
 _VOL_DOWN = "rgba(239,83,80,0.55)"   # 跌：紅
+_RSI_PERIOD = 14
 
 
-def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
+def compute_rsi(prices: pd.Series, period: int = _RSI_PERIOD) -> pd.Series:
+    """Relative Strength Index (RSI), 0–100.
+
+    delta -> separate gains/losses -> rolling averages over `period` ->
+    RS = avg_gain / avg_loss -> RSI = 100 - 100/(1+RS).
+    >70 overbought, <30 oversold.
+    """
+    delta = prices.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - 100 / (1 + rs)
+    return rsi
+
+
+def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volume") -> go.Figure:
     """TradingView-style dual panel: price line (top) + direction-coloured volume bars (bottom).
 
     Uses a real datetime x-axis so Plotly auto-spaces sparse, horizontal tick labels
@@ -83,15 +101,28 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
             "<extra></extra>"
         ),
     ), row=1, col=1)
-    fig.add_trace(go.Bar(
-        x=df["bucket_time"], y=df["volume_24h"],
-        name="交易量",
-        marker_color=vol_colors,
-        marker_line_width=0,
-        hovertemplate="交易量：$%{y:,.0f}<extra></extra>",
-    ), row=2, col=1)
+    show_rsi = lower_panel == "rsi"
+    if show_rsi:
+        rsi = compute_rsi(df["price_usd"])
+        fig.add_trace(go.Scatter(
+            x=df["bucket_time"], y=rsi,
+            name="RSI", mode="lines",
+            line=dict(color="#c792ea", width=1.8),
+            hovertemplate="RSI：%{y:.1f}<extra></extra>",
+        ), row=2, col=1)
+        # 70 / 30 reference lines (overbought / oversold)
+        fig.add_hline(y=70, line=dict(color="#e63946", width=1, dash="dot"), row=2, col=1)
+        fig.add_hline(y=30, line=dict(color="#00d4aa", width=1, dash="dot"), row=2, col=1)
+    else:
+        fig.add_trace(go.Bar(
+            x=df["bucket_time"], y=df["volume_24h"],
+            name="交易量",
+            marker_color=vol_colors,
+            marker_line_width=0,
+            hovertemplate="交易量：$%{y:,.0f}<extra></extra>",
+        ), row=2, col=1)
     fig.update_layout(
-        title=f"{coin_id.capitalize()} 價格與交易量",
+        title=f"{coin_id.capitalize()} 價格與{'RSI' if show_rsi else '交易量'}",
         paper_bgcolor=_BG, plot_bgcolor=_BG,
         font=dict(color="#d1d4dc"),
         showlegend=False,
@@ -101,8 +132,12 @@ def price_history_chart(df: pd.DataFrame, coin_id: str) -> go.Figure:
     )
     # Price panel: y-axis on the right, padded range
     fig.update_yaxes(gridcolor=_GRID, side="right", range=price_range, row=1, col=1)
-    # Volume panel: y-axis on the right, no gridlines for a cleaner look
-    fig.update_yaxes(gridcolor=_GRID, side="right", showgrid=False, row=2, col=1)
+    # Lower panel: y-axis on the right. RSI is fixed 0–100; volume has no gridlines.
+    if show_rsi:
+        fig.update_yaxes(gridcolor=_GRID, side="right", range=[0, 100],
+                         tickvals=[30, 70], row=2, col=1)
+    else:
+        fig.update_yaxes(gridcolor=_GRID, side="right", showgrid=False, row=2, col=1)
     # Clean horizontal datetime axis. No forced tickformat — Plotly auto-picks
     # time labels for intraday spans and date labels for multi-day spans.
     fig.update_xaxes(showgrid=False)
