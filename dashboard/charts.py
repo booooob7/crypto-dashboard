@@ -40,6 +40,8 @@ def _apply_crosshair_hover(fig: go.Figure) -> go.Figure:
 _VOL_UP = "rgba(0,212,170,0.55)"     # 漲：綠
 _VOL_DOWN = "rgba(239,83,80,0.55)"   # 跌：紅
 _RSI_PERIOD = 14
+_BUBBLE_MIN_SIZE = 52
+_BUBBLE_MAX_SIZE = 154
 
 
 def _compact_usd(value: float | int | None) -> str:
@@ -319,7 +321,7 @@ def correlation_heatmap(price_matrix: pd.DataFrame) -> go.Figure:
 
 
 def market_bubble_chart(df: pd.DataFrame, change_label: str = "24H") -> go.Figure:
-    """Bubble chart: size by market cap, colour by 24h percentage change."""
+    """Bubble chart: size by selected-period volatility, colour by direction."""
     data = df.copy()
     data["market_cap"] = pd.to_numeric(data["market_cap"], errors="coerce")
     data["change_24h"] = pd.to_numeric(data["change_24h"], errors="coerce")
@@ -332,8 +334,13 @@ def market_bubble_chart(df: pd.DataFrame, change_label: str = "24H") -> go.Figur
     if data.empty:
         return go.Figure()
 
-    max_market_cap = data["market_cap"].max()
-    sizes = 46 + 118 * (data["market_cap"] / max_market_cap).pow(0.5)
+    moves = data["period_change"].abs()
+    max_move = moves.max()
+    if pd.notna(max_move) and max_move > 0:
+        scaled_moves = (moves / max_move).pow(0.65)
+    else:
+        scaled_moves = pd.Series(0.0, index=data.index)
+    sizes = _BUBBLE_MIN_SIZE + (_BUBBLE_MAX_SIZE - _BUBBLE_MIN_SIZE) * scaled_moves
     labels = [
         f"{symbol}<br>{change:+.1f}%"
         for symbol, change in zip(data["symbol"], data["period_change"])

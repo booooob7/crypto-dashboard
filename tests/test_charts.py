@@ -201,7 +201,9 @@ def test_market_bubble_chart_uses_packed_layout_and_compact_hover():
     trace = fig.data[0]
     assert trace.mode == "markers+text"
     assert list(trace.text) == ["BTC<br>+3.4%", "ETH<br>-0.8%", "SOL<br>+1.2%"]
-    assert trace.marker.size[0] > trace.marker.size[1] > trace.marker.size[2]
+    assert trace.marker.size[0] > trace.marker.size[2] > trace.marker.size[1]
+    assert min(trace.marker.size) >= 52
+    assert max(trace.marker.size) <= 154
     assert fig.layout.xaxis.visible is False
     assert fig.layout.yaxis.visible is False
     assert trace.customdata[0][1] == "$1.2T"

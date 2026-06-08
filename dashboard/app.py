@@ -221,7 +221,7 @@ with dashboard_tab:
 
 with bubble_tab:
     st.subheader("市場泡泡圖")
-    st.caption("泡泡大小代表市值，顏色代表所選期間漲跌；滑鼠移到泡泡上可查看價格、市值、成交量與 7D 漲跌。")
+    st.caption("泡泡大小代表所選期間波動幅度，顏色代表漲跌方向；滑鼠移到泡泡上可查看價格、市值、成交量與 7D 漲跌。")
     if not prices_df.empty:
         if "bubble_range" not in st.session_state:
             st.session_state.bubble_range = "1D"
