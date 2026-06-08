@@ -36,6 +36,7 @@ def _latest_prices_df():
         "volume_24h": [45e9, 22e9, 4e9],
         "change_24h": [2.5, -1.2, 0.4],
         "change_7d": [6.1, -3.4, 1.8],
+        "period_change": [3.4, -0.8, 1.2],
     })
 
 
@@ -134,8 +135,9 @@ def test_price_history_chart_rsi_panel_has_reference_lines():
     fig = price_history_chart(df, "bitcoin", lower_panel="rsi")
     # RSI line present and 70/30 reference lines drawn as shapes
     assert any(t.name == "RSI" for t in fig.data)
-    ys = [s.y0 for s in fig.layout.shapes]
-    assert 70 in ys and 30 in ys
+    reference_lines = {shape.y0: shape.line.color for shape in fig.layout.shapes}
+    assert reference_lines[70] == "#00d4aa"
+    assert reference_lines[30] == "#e63946"
 
 
 def test_price_history_chart_rsi_fill_is_threshold_clipped():
@@ -190,15 +192,18 @@ def test_correlation_heatmap_returns_square_matrix():
     assert round(z[0][0], 4) == 1.0
 
 
-def test_market_bubble_chart_uses_market_cap_size_and_change_colour():
+def test_market_bubble_chart_uses_packed_layout_and_compact_hover():
     from dashboard.charts import market_bubble_chart
 
-    fig = market_bubble_chart(_latest_prices_df())
+    fig = market_bubble_chart(_latest_prices_df(), change_label="1H")
 
     assert isinstance(fig, go.Figure)
     trace = fig.data[0]
     assert trace.mode == "markers+text"
-    assert list(trace.text) == ["BTC<br>+2.5%", "ETH<br>-1.2%", "SOL<br>+0.4%"]
+    assert list(trace.text) == ["BTC<br>+3.4%", "ETH<br>-0.8%", "SOL<br>+1.2%"]
     assert trace.marker.size[0] > trace.marker.size[1] > trace.marker.size[2]
-    assert "市值" in trace.hovertemplate
-    assert "7d" in trace.hovertemplate
+    assert fig.layout.xaxis.visible is False
+    assert fig.layout.yaxis.visible is False
+    assert trace.customdata[0][1] == "$1.2T"
+    assert trace.customdata[0][2] == "$45.0B"
+    assert "1H" in trace.hovertemplate

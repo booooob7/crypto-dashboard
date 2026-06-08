@@ -133,8 +133,8 @@ def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volu
             hovertemplate="RSI：%{y:.1f}<extra></extra>",
         ), row=2, col=1)
         # 70 / 30 reference lines (overbought / oversold thresholds)
-        fig.add_hline(y=70, line=dict(color="#e63946", width=1, dash="dot"), row=2, col=1)
-        fig.add_hline(y=30, line=dict(color="#00d4aa", width=1, dash="dot"), row=2, col=1)
+        fig.add_hline(y=70, line=dict(color="#00d4aa", width=1, dash="dot"), row=2, col=1)
+        fig.add_hline(y=30, line=dict(color="#e63946", width=1, dash="dot"), row=2, col=1)
     else:
         fig.add_trace(go.Bar(
             x=df["bucket_time"], y=df["volume_24h"],
