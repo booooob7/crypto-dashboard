@@ -87,7 +87,16 @@ def get_price_history(coin_id: str, days: int = 7) -> pd.DataFrame:
         return df
     df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
     if days <= INTRADAY_MAX_DAYS:
-        return df  # intraday: keep raw 15-min snapshots
+        # intraday: resample to a uniform hourly grid so backfill (hourly) and
+        # live ETL (15-min) snapshots don't produce uneven bar widths.
+        hourly = (df.set_index("bucket_time")
+                    .sort_index()
+                    .resample("1h")
+                    .agg(price_usd=("price_usd", "last"),
+                         volume_24h=("volume_24h", "last"))
+                    .dropna(subset=["price_usd"])
+                    .reset_index())
+        return hourly
     return normalize_price_history(df)
 
 

@@ -22,13 +22,16 @@ def _mock_client_returning(rows):
     return client
 
 
-def test_get_price_history_short_range_keeps_intraday_rows():
+def test_get_price_history_short_range_resamples_to_hourly():
     import dashboard.queries as q
     q.get_price_history.clear()
     with patch.object(q, "_get_client", return_value=_mock_client_returning(_RAW_ROWS)):
         df = q.get_price_history("bitcoin", days=7)
-    # intraday: all 4 raw snapshots preserved (no daily collapse)
-    assert len(df) == 4
+    # intraday resampled to a uniform hourly grid: the two 14:00/14:15 snapshots
+    # collapse into one 14:00 hourly point -> 3 distinct hours, not 4 raw rows
+    assert len(df) == 3
+    # last value within the 14:00 hour is kept
+    assert 71200.0 in df["price_usd"].values
 
 
 def test_get_price_history_long_range_collapses_to_daily():
