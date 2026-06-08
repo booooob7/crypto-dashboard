@@ -26,6 +26,19 @@ def _onchain_df():
     })
 
 
+def _latest_prices_df():
+    return pd.DataFrame({
+        "coin_id": ["bitcoin", "ethereum", "solana"],
+        "symbol": ["BTC", "ETH", "SOL"],
+        "rank": [1, 2, 5],
+        "price_usd": [65000.0, 3200.0, 150.0],
+        "market_cap": [1.2e12, 3.8e11, 7.2e10],
+        "volume_24h": [45e9, 22e9, 4e9],
+        "change_24h": [2.5, -1.2, 0.4],
+        "change_7d": [6.1, -3.4, 1.8],
+    })
+
+
 def test_price_history_chart_returns_figure_with_two_traces():
     from dashboard.charts import price_history_chart
     fig = price_history_chart(_price_df(), "bitcoin")
@@ -175,3 +188,17 @@ def test_correlation_heatmap_returns_square_matrix():
     assert len(z) == 3 and len(z[0]) == 3
     # diagonal is 1.0 (self-correlation)
     assert round(z[0][0], 4) == 1.0
+
+
+def test_market_bubble_chart_uses_market_cap_size_and_change_colour():
+    from dashboard.charts import market_bubble_chart
+
+    fig = market_bubble_chart(_latest_prices_df())
+
+    assert isinstance(fig, go.Figure)
+    trace = fig.data[0]
+    assert trace.mode == "markers+text"
+    assert list(trace.text) == ["BTC<br>+2.5%", "ETH<br>-1.2%", "SOL<br>+0.4%"]
+    assert trace.marker.size[0] > trace.marker.size[1] > trace.marker.size[2]
+    assert "市值" in trace.hovertemplate
+    assert "7d" in trace.hovertemplate

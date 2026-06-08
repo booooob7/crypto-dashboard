@@ -287,6 +287,78 @@ def correlation_heatmap(price_matrix: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def market_bubble_chart(df: pd.DataFrame) -> go.Figure:
+    """Bubble chart: size by market cap, colour by 24h percentage change."""
+    data = df.copy()
+    data["market_cap"] = pd.to_numeric(data["market_cap"], errors="coerce")
+    data["change_24h"] = pd.to_numeric(data["change_24h"], errors="coerce")
+    data["change_7d"] = pd.to_numeric(data["change_7d"], errors="coerce")
+    data = data.dropna(subset=["symbol", "market_cap", "change_24h"])
+    data = data.sort_values("market_cap", ascending=False)
+    if data.empty:
+        return go.Figure()
+
+    max_market_cap = data["market_cap"].max()
+    sizes = 32 + 82 * (data["market_cap"] / max_market_cap).pow(0.5)
+    labels = [
+        f"{symbol}<br>{change:+.1f}%"
+        for symbol, change in zip(data["symbol"], data["change_24h"])
+    ]
+    custom = data[["price_usd", "market_cap", "volume_24h", "change_7d"]]
+
+    fig = go.Figure(go.Scatter(
+        x=data["change_24h"],
+        y=data["market_cap"],
+        mode="markers+text",
+        text=labels,
+        textposition="middle center",
+        customdata=custom,
+        marker=dict(
+            size=sizes,
+            color=data["change_24h"],
+            colorscale=[
+                [0.0, "#e63946"],
+                [0.5, "#2b2f3a"],
+                [1.0, "#00d4aa"],
+            ],
+            cmin=-5,
+            cmax=5,
+            line=dict(width=2, color="rgba(255,255,255,0.22)"),
+            opacity=0.86,
+            showscale=True,
+            colorbar=dict(title="24h"),
+        ),
+        hovertemplate=(
+            "%{text}<br>"
+            "價格：$%{customdata[0]:,.2f}<br>"
+            "市值：$%{customdata[1]:,.0f}<br>"
+            "成交量：$%{customdata[2]:,.0f}<br>"
+            "7d：%{customdata[3]:+.2f}%"
+            "<extra></extra>"
+        ),
+    ))
+    fig.update_layout(
+        title="市場泡泡圖",
+        paper_bgcolor=_BG,
+        plot_bgcolor=_BG,
+        font=dict(color="#d1d4dc"),
+        height=620,
+        margin=dict(l=0, r=0, t=48, b=0),
+        xaxis=dict(
+            title="24h 漲跌幅 (%)",
+            zeroline=True,
+            zerolinecolor="rgba(255,255,255,0.35)",
+            gridcolor=_GRID,
+        ),
+        yaxis=dict(
+            title="市值",
+            type="log",
+            gridcolor=_GRID,
+        ),
+    )
+    return fig
+
+
 def onchain_chart(df: pd.DataFrame, metric_label: str) -> go.Figure:
     """Line chart for a single on-chain metric."""
     fig = go.Figure(go.Scatter(
