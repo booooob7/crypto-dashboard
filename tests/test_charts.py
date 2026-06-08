@@ -148,13 +148,13 @@ def test_price_history_chart_rsi_fill_is_threshold_clipped():
     })
 
     fig = price_history_chart(df, "bitcoin", lower_panel="rsi")
-    red_fill = next(t for t in fig.data if t.fillcolor == "rgba(230,57,70,0.45)")
     green_fill = next(t for t in fig.data if t.fillcolor == "rgba(0,212,170,0.45)")
+    red_fill = next(t for t in fig.data if t.fillcolor == "rgba(230,57,70,0.45)")
 
-    assert red_fill.fill == "tonexty"
     assert green_fill.fill == "tonexty"
-    assert min(red_fill.y) >= 70
-    assert list(green_fill.y) == [30] * len(df)
+    assert red_fill.fill == "tonexty"
+    assert min(green_fill.y) >= 70
+    assert list(red_fill.y) == [30] * len(df)
 
 
 def test_price_history_chart_rsi_does_not_use_full_zone_rectangles():

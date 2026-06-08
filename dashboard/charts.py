@@ -110,19 +110,19 @@ def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volu
         fig.add_trace(go.Scatter(x=x, y=[70] * len(x), mode="lines",
                                  line=dict(width=0), hoverinfo="skip",
                                  showlegend=False), row=2, col=1)
-        # Overbought fill: only the portion of RSI ABOVE 70, filled red down to 70
+        # Overbought fill: only the portion of RSI ABOVE 70, filled green down to 70
         over = rsi.where(rsi > 70, 70)
         fig.add_trace(go.Scatter(x=x, y=over, mode="lines", line=dict(width=0),
-                                 fill="tonexty", fillcolor="rgba(230,57,70,0.45)",
+                                 fill="tonexty", fillcolor="rgba(0,212,170,0.45)",
                                  hoverinfo="skip", showlegend=False), row=2, col=1)
 
         fig.add_trace(go.Scatter(x=x, y=[30] * len(x), mode="lines",
                                  line=dict(width=0), hoverinfo="skip",
                                  showlegend=False), row=2, col=1)
-        # Oversold fill: only the portion of RSI BELOW 30, filled green up to 30
+        # Oversold fill: only the portion of RSI BELOW 30, filled red up to 30
         under = rsi.where(rsi < 30, 30)
         fig.add_trace(go.Scatter(x=x, y=under, mode="lines", line=dict(width=0),
-                                 fill="tonexty", fillcolor="rgba(0,212,170,0.45)",
+                                 fill="tonexty", fillcolor="rgba(230,57,70,0.45)",
                                  hoverinfo="skip", showlegend=False), row=2, col=1)
 
         # The RSI line itself (on top)
