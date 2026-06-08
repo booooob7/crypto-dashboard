@@ -93,16 +93,18 @@ def test_fear_greed_gauge_localizes_label_and_draws_needle():
     from dashboard.charts import fear_greed_gauge
     fig = fear_greed_gauge(12, "Extreme Fear")
     assert fig.data[0].title.text == "極度恐懼"
-    assert fig.data[0].gauge.threshold.value == 12
+    assert any(shape.type == "line" for shape in fig.layout.shapes)
 
 
-def test_fear_greed_gauge_needle_uses_inner_gauge_threshold():
+def test_fear_greed_gauge_needle_stays_inside_the_ring():
     from dashboard.charts import fear_greed_gauge
     fig = fear_greed_gauge(50, "Neutral")
-    threshold = fig.data[0].gauge.threshold
-    assert threshold.value == 50
-    assert threshold.thickness <= 0.75
-    assert len(fig.layout.shapes) == 0
+    needle = next(shape for shape in fig.layout.shapes if shape.type == "line")
+    assert fig.data[0].gauge.threshold.value is None
+    assert needle.x0 == needle.x1 == 0.5
+    assert needle.y0 > 0.35
+    assert needle.y1 < 0.46
+    assert needle.y1 > needle.y0
 
 
 def test_fear_greed_history_chart_returns_figure():
