@@ -203,18 +203,7 @@ def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volu
 def fear_greed_gauge(value: int, label: str) -> go.Figure:
     """Radial gauge for current Fear & Greed value (0-100)."""
     color = "#e63946" if value < 40 else "#f4a261" if value < 60 else "#2a9d8f"
-    needle_angle = math.radians(180 - (max(0, min(value, 100)) / 100 * 180))
-    needle_center = (0.5, 0.08)
-    needle_inner_radius = 0.31
-    needle_outer_radius = 0.38
-    needle_base = (
-        needle_center[0] + needle_inner_radius * math.cos(needle_angle),
-        needle_center[1] + needle_inner_radius * math.sin(needle_angle),
-    )
-    needle_tip = (
-        needle_center[0] + needle_outer_radius * math.cos(needle_angle),
-        needle_center[1] + needle_outer_radius * math.sin(needle_angle),
-    )
+    safe_value = max(0, min(value, 100))
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
@@ -229,6 +218,11 @@ def fear_greed_gauge(value: int, label: str) -> go.Figure:
                 dict(range=[55, 75], color="#a8dadc"),
                 dict(range=[75, 100], color="#2a9d8f"),
             ],
+            threshold=dict(
+                value=safe_value,
+                thickness=0.65,
+                line=dict(color="white", width=5),
+            ),
         ),
     ))
     fig.update_layout(
@@ -236,18 +230,7 @@ def fear_greed_gauge(value: int, label: str) -> go.Figure:
         font=dict(color="white"),
         height=250,
         margin=dict(l=20, r=20, t=40, b=20),
-        shapes=[
-            dict(
-                type="line",
-                xref="paper",
-                yref="paper",
-                x0=needle_base[0],
-                y0=needle_base[1],
-                x1=needle_tip[0],
-                y1=needle_tip[1],
-                line=dict(color="white", width=5),
-            ),
-        ],
+        shapes=[],
     )
     return fig
 
