@@ -96,6 +96,14 @@ def test_fear_greed_gauge_localizes_label_and_draws_needle():
     assert any(shape.type == "line" for shape in fig.layout.shapes)
 
 
+def test_fear_greed_gauge_needle_stays_near_outer_ring():
+    from dashboard.charts import fear_greed_gauge
+    fig = fear_greed_gauge(50, "Neutral")
+    needle = next(shape for shape in fig.layout.shapes if shape.type == "line")
+    assert needle.y0 > 0.30
+    assert needle.y1 > needle.y0
+
+
 def test_fear_greed_history_chart_returns_figure():
     from dashboard.charts import fear_greed_history_chart
     fig = fear_greed_history_chart(_fg_df())

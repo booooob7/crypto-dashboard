@@ -205,10 +205,15 @@ def fear_greed_gauge(value: int, label: str) -> go.Figure:
     color = "#e63946" if value < 40 else "#f4a261" if value < 60 else "#2a9d8f"
     needle_angle = math.radians(180 - (max(0, min(value, 100)) / 100 * 180))
     needle_center = (0.5, 0.08)
-    needle_length = 0.37
+    needle_inner_radius = 0.31
+    needle_outer_radius = 0.38
+    needle_base = (
+        needle_center[0] + needle_inner_radius * math.cos(needle_angle),
+        needle_center[1] + needle_inner_radius * math.sin(needle_angle),
+    )
     needle_tip = (
-        needle_center[0] + needle_length * math.cos(needle_angle),
-        needle_center[1] + needle_length * math.sin(needle_angle),
+        needle_center[0] + needle_outer_radius * math.cos(needle_angle),
+        needle_center[1] + needle_outer_radius * math.sin(needle_angle),
     )
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -236,22 +241,11 @@ def fear_greed_gauge(value: int, label: str) -> go.Figure:
                 type="line",
                 xref="paper",
                 yref="paper",
-                x0=needle_center[0],
-                y0=needle_center[1],
+                x0=needle_base[0],
+                y0=needle_base[1],
                 x1=needle_tip[0],
                 y1=needle_tip[1],
-                line=dict(color="white", width=4),
-            ),
-            dict(
-                type="circle",
-                xref="paper",
-                yref="paper",
-                x0=needle_center[0] - 0.018,
-                y0=needle_center[1] - 0.018,
-                x1=needle_center[0] + 0.018,
-                y1=needle_center[1] + 0.018,
-                fillcolor="white",
-                line=dict(color="white"),
+                line=dict(color="white", width=5),
             ),
         ],
     )
