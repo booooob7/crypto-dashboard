@@ -94,3 +94,20 @@ def test_onchain_chart_returns_figure():
     fig = onchain_chart(_onchain_df(), "Active Addresses")
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 1
+
+
+def test_correlation_heatmap_returns_square_matrix():
+    from dashboard.charts import correlation_heatmap
+    dates = pd.date_range("2026-01-01", periods=10, freq="D")
+    matrix = pd.DataFrame({
+        "bitcoin":  [100, 102, 101, 104, 106, 105, 108, 110, 109, 112],
+        "ethereum": [50, 51, 50, 52, 53, 52, 54, 55, 54, 56],   # moves with BTC
+        "xrp":      [2.0, 1.9, 2.0, 1.8, 1.7, 1.8, 1.6, 1.5, 1.6, 1.4],  # moves opposite
+    }, index=dates)
+    fig = correlation_heatmap(matrix)
+    assert isinstance(fig, go.Figure)
+    z = fig.data[0].z
+    # 3 coins -> 3x3 correlation matrix
+    assert len(z) == 3 and len(z[0]) == 3
+    # diagonal is 1.0 (self-correlation)
+    assert round(z[0][0], 4) == 1.0

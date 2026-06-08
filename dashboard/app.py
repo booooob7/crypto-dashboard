@@ -11,6 +11,7 @@ from dashboard.queries import (
     get_price_history,
     get_fear_greed_history,
     get_onchain_history,
+    get_price_matrix,
     get_last_updated,
 )
 from dashboard.charts import (
@@ -18,6 +19,7 @@ from dashboard.charts import (
     fear_greed_gauge,
     fear_greed_history_chart,
     onchain_chart,
+    correlation_heatmap,
     fear_greed_label_zh,
 )
 
@@ -181,3 +183,15 @@ if not onchain_df.empty:
     )
 else:
     st.info("尚無鏈上數據。")
+
+st.divider()
+
+# ── Section 5: Coin Correlation Heatmap ──────────────────────────────────────
+st.subheader("幣種相關性分析")
+st.caption("各幣種每日報酬的相關係數：+1 同向、0 無關、−1 反向（已排除穩定幣）")
+corr_days = st.radio("相關性區間", {"30天": 30, "90天": 90}, horizontal=True, key="corr_range")
+price_matrix = get_price_matrix({"30天": 30, "90天": 90}[corr_days])
+if not price_matrix.empty and price_matrix.shape[1] >= 2:
+    st.plotly_chart(correlation_heatmap(price_matrix), use_container_width=True)
+else:
+    st.info("相關性資料不足 — 需要至少兩個幣種的歷史價格。")

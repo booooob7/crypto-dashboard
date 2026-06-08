@@ -116,6 +116,38 @@ def get_onchain_history(metric: str = "n-unique-addresses", days: int = 30) -> p
 
 
 @st.cache_data(ttl=300)
+def get_price_matrix(days: int = 30) -> pd.DataFrame:
+    """Daily close price for every coin over N days, as a date x coin matrix.
+
+    Used to compute the correlation heatmap. Stablecoins are excluded because
+    their price is pegged near $1 and produces meaningless (near-zero/NaN)
+    correlations that just add noise.
+    """
+    client = _get_client()
+    since = (datetime.now(timezone.utc).date() - timedelta(days=days)).isoformat()
+    result = (client.table("prices")
+              .select("coin_id,bucket_time,price_usd")
+              .gte("bucket_time", since)
+              .order("bucket_time")
+              .execute())
+    df = pd.DataFrame(result.data)
+    if df.empty:
+        return df
+
+    stablecoins = {"tether", "usd-coin", "dai", "first-digital-usd", "usds"}
+    df = df[~df["coin_id"].isin(stablecoins)]
+
+    df["bucket_time"] = pd.to_datetime(df["bucket_time"], utc=True)
+    df["date"] = df["bucket_time"].dt.floor("D")
+    # one close per coin per day, then pivot to date x coin
+    daily = (df.sort_values("bucket_time")
+               .groupby(["date", "coin_id"], as_index=False)
+               .agg(price_usd=("price_usd", "last")))
+    matrix = daily.pivot(index="date", columns="coin_id", values="price_usd")
+    return matrix
+
+
+@st.cache_data(ttl=300)
 def get_last_updated() -> str:
     """Timestamp of the most recent ETL price insert."""
     client = _get_client()

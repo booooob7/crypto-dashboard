@@ -192,6 +192,44 @@ def fear_greed_history_chart(df: pd.DataFrame) -> go.Figure:
     return _apply_crosshair_hover(fig)
 
 
+def correlation_heatmap(price_matrix: pd.DataFrame) -> go.Figure:
+    """Heatmap of pairwise price-return correlations across coins.
+
+    Takes a date x coin price matrix, converts to daily returns, computes the
+    Pearson correlation matrix, and renders it. +1 (green) = move together,
+    0 (grey) = unrelated, -1 (red) = move oppositely.
+    """
+    returns = price_matrix.pct_change().dropna(how="all")
+    corr = returns.corr()
+    labels = [c.capitalize() for c in corr.columns]
+
+    fig = go.Figure(go.Heatmap(
+        z=corr.values,
+        x=labels,
+        y=labels,
+        zmin=-1, zmax=1,
+        colorscale=[
+            [0.0, "#e63946"],   # -1 紅：反向
+            [0.5, "#2b2f3a"],   #  0 灰：無關
+            [1.0, "#00d4aa"],   # +1 綠：同向
+        ],
+        colorbar=dict(title="相關係數", tickvals=[-1, 0, 1]),
+        text=corr.round(2).values,
+        texttemplate="%{text}",
+        textfont=dict(size=10, color="white"),
+        hovertemplate="%{y} × %{x}<br>相關係數：%{z:.2f}<extra></extra>",
+    ))
+    fig.update_layout(
+        title="幣種價格相關性（近期每日報酬）",
+        paper_bgcolor=_BG, plot_bgcolor=_BG,
+        font=dict(color="white"),
+        margin=dict(l=0, r=0, t=40, b=0),
+        height=480,
+        yaxis=dict(autorange="reversed"),
+    )
+    return fig
+
+
 def onchain_chart(df: pd.DataFrame, metric_label: str) -> go.Figure:
     """Line chart for a single on-chain metric."""
     fig = go.Figure(go.Scatter(

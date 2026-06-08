@@ -20,6 +20,7 @@ from dashboard.charts import (  # noqa: E402
     fear_greed_gauge,
     fear_greed_history_chart,
     onchain_chart,
+    correlation_heatmap,
 )
 
 rng = np.random.default_rng(42)
@@ -120,3 +121,20 @@ st.divider()
 # Section 4 — on-chain
 st.subheader("鏈上數據：比特幣活躍地址數（近 30 天）")
 st.plotly_chart(onchain_chart(make_onchain(30), "比特幣活躍地址數"), use_container_width=True)
+st.divider()
+
+# Section 5 — correlation heatmap (synthetic price matrix)
+st.subheader("幣種相關性分析")
+st.caption("各幣種每日報酬的相關係數：+1 同向、0 無關、−1 反向（已排除穩定幣）")
+_dates = pd.date_range(end=pd.Timestamp.utcnow(), periods=30, freq="D")
+_btc = 65000 * (1 + rng.normal(0, 0.02, 30).cumsum())
+_corr_coins = {
+    "bitcoin":  _btc,
+    "ethereum": _btc * 0.06 * (1 + rng.normal(0, 0.005, 30)),       # 高度同向
+    "binancecoin": _btc * 0.011 * (1 + rng.normal(0, 0.01, 30)),    # 中度同向
+    "solana":   150 * (1 + rng.normal(0, 0.03, 30).cumsum()),       # 部分相關
+    "ripple":   2.5 - _btc / 65000 * 0.8 + rng.normal(0, 0.02, 30), # 偏反向
+    "dogecoin": 0.2 * (1 + rng.normal(0, 0.04, 30).cumsum()),       # 較無關
+}
+_matrix = pd.DataFrame(_corr_coins, index=_dates)
+st.plotly_chart(correlation_heatmap(_matrix), use_container_width=True)
