@@ -87,3 +87,21 @@ def test_compute_period_changes_returns_one_change_per_coin():
 
     assert changes.set_index("coin_id").loc["bitcoin", "period_change"] == 10.0
     assert changes.set_index("coin_id").loc["ethereum", "period_change"] == -10.0
+
+
+def test_compute_period_changes_latest_pair_uses_recent_two_points():
+    from dashboard.queries import compute_period_changes
+
+    df = pd.DataFrame({
+        "coin_id": ["bitcoin", "bitcoin", "bitcoin"],
+        "bucket_time": pd.to_datetime([
+            "2026-06-08T00:00:00Z",
+            "2026-06-08T05:00:00Z",
+            "2026-06-08T05:15:00Z",
+        ]),
+        "price_usd": [100.0, 200.0, 220.0],
+    })
+
+    changes = compute_period_changes(df, latest_pair=True)
+
+    assert changes.set_index("coin_id").loc["bitcoin", "period_change"] == 10.0

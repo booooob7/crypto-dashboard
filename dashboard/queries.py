@@ -35,7 +35,7 @@ def normalize_price_history(df: pd.DataFrame) -> pd.DataFrame:
     return normalized
 
 
-def compute_period_changes(df: pd.DataFrame) -> pd.DataFrame:
+def compute_period_changes(df: pd.DataFrame, latest_pair: bool = False) -> pd.DataFrame:
     """Compute first-to-last percent change for each coin in a price window."""
     if df.empty:
         return pd.DataFrame(columns=["coin_id", "period_change"])
@@ -47,7 +47,15 @@ def compute_period_changes(df: pd.DataFrame) -> pd.DataFrame:
     if prices.empty:
         return pd.DataFrame(columns=["coin_id", "period_change"])
 
-    grouped = prices.sort_values("bucket_time").groupby("coin_id")
+    prices = prices.sort_values(["coin_id", "bucket_time"])
+    if latest_pair:
+        prices = prices.groupby("coin_id", group_keys=False).tail(2)
+        counts = prices.groupby("coin_id").size()
+        prices = prices[prices["coin_id"].isin(counts[counts >= 2].index)]
+        if prices.empty:
+            return pd.DataFrame(columns=["coin_id", "period_change"])
+
+    grouped = prices.groupby("coin_id")
     first = grouped.first()["price_usd"]
     last = grouped.last()["price_usd"]
     changes = (((last - first) / first) * 100).replace([float("inf"), -float("inf")], pd.NA)
@@ -57,7 +65,11 @@ def compute_period_changes(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def get_price_period_changes(hours: int | None = None, days: int | None = None) -> pd.DataFrame:
+def get_price_period_changes(
+    hours: int | None = None,
+    days: int | None = None,
+    latest_pair: bool = False,
+) -> pd.DataFrame:
     """Return percent change over a recent window for every coin in prices."""
     client = _get_client()
     if hours is not None:
@@ -72,7 +84,7 @@ def get_price_period_changes(hours: int | None = None, days: int | None = None) 
               .gte("bucket_time", since)
               .order("bucket_time")
               .execute())
-    return compute_period_changes(pd.DataFrame(result.data))
+    return compute_period_changes(pd.DataFrame(result.data), latest_pair=latest_pair)
 
 
 @st.cache_data(ttl=300)

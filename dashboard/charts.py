@@ -343,6 +343,8 @@ def market_bubble_chart(df: pd.DataFrame, change_label: str = "24H") -> go.Figur
         "market_cap": [_compact_usd(value) for value in data["market_cap"]],
         "volume": [_compact_usd(value) for value in data["volume_24h"]],
         "change_7d": [f"{value:+.1f}%" if pd.notna(value) else "N/A" for value in data["change_7d"]],
+        "symbol": data["symbol"].astype(str).tolist(),
+        "period_change": [f"{value:+.1f}%" for value in data["period_change"]],
     })
     x, y = _packed_positions(len(data))
     marker_colors = [
@@ -368,8 +370,8 @@ def market_bubble_chart(df: pd.DataFrame, change_label: str = "24H") -> go.Figur
             opacity=0.9,
         ),
         hovertemplate=(
-            "%{text}<br>"
-            f"{change_label}：%{{text}}<br>"
+            "%{customdata[4]}<br>"
+            f"{change_label}：%{{customdata[5]}}<br>"
             "價格：%{customdata[0]}<br>"
             "市值：%{customdata[1]}<br>"
             "成交量：%{customdata[2]}<br>"

@@ -15,6 +15,7 @@ from dashboard.queries import (
     get_price_period_changes,
     get_last_updated,
 )
+from dashboard.metrics import estimate_market_cap_change_pct
 from dashboard.charts import (
     price_history_chart,
     fear_greed_gauge,
@@ -62,7 +63,7 @@ ONCHAIN_METRIC_LABELS = {
 }
 
 BUBBLE_RANGES = {
-    "1H": {"hours": 1},
+    "1H": {"hours": 6, "latest_pair": True},
     "1D": {"column": "change_24h"},
     "1W": {"column": "change_7d"},
     "1M": {"days": 30},
@@ -110,6 +111,9 @@ with dashboard_tab:
         btc = prices_df[prices_df["coin_id"] == "bitcoin"].iloc[0] if "bitcoin" in coin_ids else None
         eth = prices_df[prices_df["coin_id"] == "ethereum"].iloc[0] if "ethereum" in coin_ids else None
         top10_mcap = prices_df["market_cap"].sum()
+        top10_mcap_delta = format_delta(
+            estimate_market_cap_change_pct(prices_df, "change_24h")
+        )
         fg_current = int(fg_df.iloc[-1]["value"]) if not fg_df.empty else None
         fg_label   = fg_df.iloc[-1]["label"]       if not fg_df.empty else "N/A"
 
@@ -121,7 +125,7 @@ with dashboard_tab:
             if eth is not None:
                 st.metric("Ξ 以太幣", f"${eth['price_usd']:,.0f}", format_delta(eth["change_24h"]))
         with col3:
-            st.metric("🌐 前十大市值", f"${top10_mcap / 1e12:.2f}T")
+            st.metric("🌐 前十大市值", f"${top10_mcap / 1e12:.2f}T", top10_mcap_delta)
         with col4:
             if fg_current is not None:
                 st.metric(
@@ -230,6 +234,7 @@ with bubble_tab:
             changes_df = get_price_period_changes(
                 hours=range_config.get("hours"),
                 days=range_config.get("days"),
+                latest_pair=range_config.get("latest_pair", False),
             )
             bubble_df = bubble_df.merge(changes_df, on="coin_id", how="left")
 

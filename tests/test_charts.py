@@ -207,3 +207,7 @@ def test_market_bubble_chart_uses_packed_layout_and_compact_hover():
     assert trace.customdata[0][1] == "$1.2T"
     assert trace.customdata[0][2] == "$45.0B"
     assert "1H" in trace.hovertemplate
+    assert "%{text}<br>" not in trace.hovertemplate
+    assert trace.customdata[0][4] == "BTC"
+    assert trace.customdata[0][5] == "+3.4%"
+    assert "1H：%{customdata[5]}" in trace.hovertemplate
