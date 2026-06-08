@@ -125,6 +125,41 @@ def test_price_history_chart_rsi_panel_has_reference_lines():
     assert 70 in ys and 30 in ys
 
 
+def test_price_history_chart_rsi_fill_is_threshold_clipped():
+    from dashboard.charts import price_history_chart
+    dates = pd.date_range("2026-01-01", periods=30, freq="D", tz="UTC")
+    df = pd.DataFrame({
+        "bucket_time": dates,
+        "price_usd": [float(i) for i in range(1, 31)],
+        "volume_24h": [1e9] * 30,
+    })
+
+    fig = price_history_chart(df, "bitcoin", lower_panel="rsi")
+    red_fill = next(t for t in fig.data if t.fillcolor == "rgba(230,57,70,0.45)")
+    green_fill = next(t for t in fig.data if t.fillcolor == "rgba(0,212,170,0.45)")
+
+    assert red_fill.fill == "tonexty"
+    assert green_fill.fill == "tonexty"
+    assert min(red_fill.y) >= 70
+    assert list(green_fill.y) == [30] * len(df)
+
+
+def test_price_history_chart_rsi_does_not_use_full_zone_rectangles():
+    from dashboard.charts import price_history_chart
+    dates = pd.date_range("2026-01-01", periods=30, freq="D", tz="UTC")
+    df = pd.DataFrame({
+        "bucket_time": dates,
+        "price_usd": [100 + ((-1) ** i) * i for i in range(30)],
+        "volume_24h": [1e9] * 30,
+    })
+
+    fig = price_history_chart(df, "bitcoin", lower_panel="rsi")
+    assert not any(
+        shape.type == "rect" and {shape.y0, shape.y1} in ({0, 30}, {70, 100})
+        for shape in fig.layout.shapes
+    )
+
+
 def test_correlation_heatmap_returns_square_matrix():
     from dashboard.charts import correlation_heatmap
     dates = pd.date_range("2026-01-01", periods=10, freq="D")

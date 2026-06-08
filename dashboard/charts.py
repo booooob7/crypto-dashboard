@@ -104,13 +104,30 @@ def price_history_chart(df: pd.DataFrame, coin_id: str, lower_panel: str = "volu
     show_rsi = lower_panel == "rsi"
     if show_rsi:
         rsi = compute_rsi(df["price_usd"])
-        # Shaded zones: overbought (70–100) red, oversold (0–30) green
-        fig.add_hrect(y0=70, y1=100, fillcolor="rgba(230,57,70,0.13)",
-                      line_width=0, row=2, col=1)
-        fig.add_hrect(y0=0, y1=30, fillcolor="rgba(0,212,170,0.13)",
-                      line_width=0, row=2, col=1)
+        x = df["bucket_time"]
+
+        # Baseline traces at 70 / 30 (invisible) so the fill bands have a target
+        fig.add_trace(go.Scatter(x=x, y=[70] * len(x), mode="lines",
+                                 line=dict(width=0), hoverinfo="skip",
+                                 showlegend=False), row=2, col=1)
+        # Overbought fill: only the portion of RSI ABOVE 70, filled red down to 70
+        over = rsi.where(rsi > 70, 70)
+        fig.add_trace(go.Scatter(x=x, y=over, mode="lines", line=dict(width=0),
+                                 fill="tonexty", fillcolor="rgba(230,57,70,0.45)",
+                                 hoverinfo="skip", showlegend=False), row=2, col=1)
+
+        fig.add_trace(go.Scatter(x=x, y=[30] * len(x), mode="lines",
+                                 line=dict(width=0), hoverinfo="skip",
+                                 showlegend=False), row=2, col=1)
+        # Oversold fill: only the portion of RSI BELOW 30, filled green up to 30
+        under = rsi.where(rsi < 30, 30)
+        fig.add_trace(go.Scatter(x=x, y=under, mode="lines", line=dict(width=0),
+                                 fill="tonexty", fillcolor="rgba(0,212,170,0.45)",
+                                 hoverinfo="skip", showlegend=False), row=2, col=1)
+
+        # The RSI line itself (on top)
         fig.add_trace(go.Scatter(
-            x=df["bucket_time"], y=rsi,
+            x=x, y=rsi,
             name="RSI", mode="lines",
             line=dict(color="#c792ea", width=1.8),
             hovertemplate="RSI：%{y:.1f}<extra></extra>",
