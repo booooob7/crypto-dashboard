@@ -37,30 +37,33 @@ def normalize_price_history(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data(ttl=300)
 def get_latest_prices() -> pd.DataFrame:
-    """Most recent price snapshot for each coin, sorted by rank.
+    """Most recent COMPLETE price snapshot for each coin, sorted by rank.
 
-    Queries by the latest bucket_time to avoid Python-side groupby on a capped
-    result set — correct regardless of how large the prices table grows.
+    The overview cards need both the latest price AND its 24h/7d change. Backfill
+    rows (hourly/daily history) intentionally have null change_24h/change_7d, and
+    can carry the newest bucket_time — so simply taking the latest row would drop
+    the change values from the cards. We therefore take, per coin, the most recent
+    row that has a populated change_24h (i.e. a live ETL snapshot), keeping price
+    and change consistent and from the same source.
     """
     client = _get_client()
-    # Step 1: find the most recent bucket_time
-    latest = (client.table("prices")
-              .select("bucket_time")
-              .order("bucket_time", desc=True)
-              .limit(1)
-              .execute())
-    if not latest.data:
-        return pd.DataFrame()
-    latest_bucket = latest.data[0]["bucket_time"]
-    # Step 2: fetch all coins at exactly that bucket_time
+    since = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
     result = (client.table("prices")
               .select("*")
-              .eq("bucket_time", latest_bucket)
+              .gte("bucket_time", since)
+              .order("bucket_time")
               .execute())
     df = pd.DataFrame(result.data)
     if df.empty:
         return df
-    return df.sort_values("rank")
+
+    complete = df[df["change_24h"].notna()]
+    # Fall back to all rows if no complete snapshot exists yet (e.g. fresh DB)
+    source = complete if not complete.empty else df
+    latest = (source.sort_values("bucket_time")
+                    .groupby("coin_id", as_index=False)
+                    .tail(1))
+    return latest.sort_values("rank")
 
 
 @st.cache_data(ttl=300)
