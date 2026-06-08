@@ -67,3 +67,23 @@ def test_normalize_price_history_to_daily_buckets_fills_mixed_frequency_gaps():
     ]
     assert normalized.iloc[-1]["price_usd"] == 62600.0
     assert normalized.iloc[-1]["volume_24h"] == 31e9
+
+
+def test_compute_period_changes_returns_one_change_per_coin():
+    from dashboard.queries import compute_period_changes
+
+    df = pd.DataFrame({
+        "coin_id": ["bitcoin", "ethereum", "bitcoin", "ethereum"],
+        "bucket_time": pd.to_datetime([
+            "2026-06-08T00:00:00Z",
+            "2026-06-08T00:00:00Z",
+            "2026-06-08T01:00:00Z",
+            "2026-06-08T01:00:00Z",
+        ]),
+        "price_usd": [100.0, 200.0, 110.0, 180.0],
+    })
+
+    changes = compute_period_changes(df)
+
+    assert changes.set_index("coin_id").loc["bitcoin", "period_change"] == 10.0
+    assert changes.set_index("coin_id").loc["ethereum", "period_change"] == -10.0

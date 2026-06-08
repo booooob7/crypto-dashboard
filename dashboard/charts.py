@@ -42,6 +42,37 @@ _VOL_DOWN = "rgba(239,83,80,0.55)"   # 跌：紅
 _RSI_PERIOD = 14
 
 
+def _compact_usd(value: float | int | None) -> str:
+    if pd.isna(value):
+        return "N/A"
+    abs_value = abs(float(value))
+    if abs_value >= 1e12:
+        return f"${float(value) / 1e12:.1f}T"
+    if abs_value >= 1e9:
+        return f"${float(value) / 1e9:.1f}B"
+    if abs_value >= 1e6:
+        return f"${float(value) / 1e6:.1f}M"
+    if abs_value >= 1e3:
+        return f"${float(value) / 1e3:.1f}K"
+    return f"${float(value):.1f}"
+
+
+def _packed_positions(count: int) -> tuple[list[float], list[float]]:
+    positions = [
+        (0.0, 0.0), (-1.35, -0.75), (1.35, 0.8), (-1.2, 1.25), (1.25, -1.2),
+        (0.0, 1.75), (-2.25, 0.3), (2.25, -0.15), (-0.25, -1.95), (2.0, 1.7),
+        (-2.0, -1.7), (0.9, 2.35), (-2.8, 1.55), (2.8, -1.55), (-3.1, -0.7),
+        (3.1, 0.9), (-0.95, 2.65), (0.95, -2.65), (-3.4, 2.55), (3.4, -2.55),
+    ]
+    if count > len(positions):
+        for i in range(len(positions), count):
+            angle = i * 2.399963
+            radius = 1.15 * math.sqrt(i)
+            positions.append((radius * math.cos(angle), radius * math.sin(angle)))
+    selected = positions[:count]
+    return [x for x, _ in selected], [y for _, y in selected]
+
+
 def compute_rsi(prices: pd.Series, period: int = _RSI_PERIOD) -> pd.Series:
     """Relative Strength Index (RSI), 0–100.
 
@@ -287,74 +318,75 @@ def correlation_heatmap(price_matrix: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def market_bubble_chart(df: pd.DataFrame) -> go.Figure:
+def market_bubble_chart(df: pd.DataFrame, change_label: str = "24H") -> go.Figure:
     """Bubble chart: size by market cap, colour by 24h percentage change."""
     data = df.copy()
     data["market_cap"] = pd.to_numeric(data["market_cap"], errors="coerce")
     data["change_24h"] = pd.to_numeric(data["change_24h"], errors="coerce")
     data["change_7d"] = pd.to_numeric(data["change_7d"], errors="coerce")
-    data = data.dropna(subset=["symbol", "market_cap", "change_24h"])
+    if "period_change" not in data:
+        data["period_change"] = data["change_24h"]
+    data["period_change"] = pd.to_numeric(data["period_change"], errors="coerce")
+    data = data.dropna(subset=["symbol", "market_cap", "period_change"])
     data = data.sort_values("market_cap", ascending=False)
     if data.empty:
         return go.Figure()
 
     max_market_cap = data["market_cap"].max()
-    sizes = 32 + 82 * (data["market_cap"] / max_market_cap).pow(0.5)
+    sizes = 46 + 118 * (data["market_cap"] / max_market_cap).pow(0.5)
     labels = [
         f"{symbol}<br>{change:+.1f}%"
-        for symbol, change in zip(data["symbol"], data["change_24h"])
+        for symbol, change in zip(data["symbol"], data["period_change"])
     ]
-    custom = data[["price_usd", "market_cap", "volume_24h", "change_7d"]]
+    custom = pd.DataFrame({
+        "price": [_compact_usd(value) for value in data["price_usd"]],
+        "market_cap": [_compact_usd(value) for value in data["market_cap"]],
+        "volume": [_compact_usd(value) for value in data["volume_24h"]],
+        "change_7d": [f"{value:+.1f}%" if pd.notna(value) else "N/A" for value in data["change_7d"]],
+    })
+    x, y = _packed_positions(len(data))
+    marker_colors = [
+        "rgba(0,212,170,0.68)" if change >= 0 else "rgba(230,57,70,0.72)"
+        for change in data["period_change"]
+    ]
+    outline_colors = [
+        "rgba(0,255,80,0.95)" if change >= 0 else "rgba(255,40,40,0.95)"
+        for change in data["period_change"]
+    ]
 
     fig = go.Figure(go.Scatter(
-        x=data["change_24h"],
-        y=data["market_cap"],
+        x=x,
+        y=y,
         mode="markers+text",
         text=labels,
         textposition="middle center",
         customdata=custom,
         marker=dict(
             size=sizes,
-            color=data["change_24h"],
-            colorscale=[
-                [0.0, "#e63946"],
-                [0.5, "#2b2f3a"],
-                [1.0, "#00d4aa"],
-            ],
-            cmin=-5,
-            cmax=5,
-            line=dict(width=2, color="rgba(255,255,255,0.22)"),
-            opacity=0.86,
-            showscale=True,
-            colorbar=dict(title="24h"),
+            color=marker_colors,
+            line=dict(width=4, color=outline_colors),
+            opacity=0.9,
         ),
         hovertemplate=(
             "%{text}<br>"
-            "價格：$%{customdata[0]:,.2f}<br>"
-            "市值：$%{customdata[1]:,.0f}<br>"
-            "成交量：$%{customdata[2]:,.0f}<br>"
-            "7d：%{customdata[3]:+.2f}%"
+            f"{change_label}：%{{text}}<br>"
+            "價格：%{customdata[0]}<br>"
+            "市值：%{customdata[1]}<br>"
+            "成交量：%{customdata[2]}<br>"
+            "7D：%{customdata[3]}"
             "<extra></extra>"
         ),
     ))
     fig.update_layout(
-        title="市場泡泡圖",
+        title=f"市場泡泡圖 — {change_label}",
         paper_bgcolor=_BG,
         plot_bgcolor=_BG,
-        font=dict(color="#d1d4dc"),
+        font=dict(color="white"),
         height=620,
         margin=dict(l=0, r=0, t=48, b=0),
-        xaxis=dict(
-            title="24h 漲跌幅 (%)",
-            zeroline=True,
-            zerolinecolor="rgba(255,255,255,0.35)",
-            gridcolor=_GRID,
-        ),
-        yaxis=dict(
-            title="市值",
-            type="log",
-            gridcolor=_GRID,
-        ),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        showlegend=False,
     )
     return fig
 

@@ -12,6 +12,7 @@ from dashboard.queries import (
     get_fear_greed_history,
     get_onchain_history,
     get_price_matrix,
+    get_price_period_changes,
     get_last_updated,
 )
 from dashboard.charts import (
@@ -58,6 +59,14 @@ ONCHAIN_METRIC_LABELS = {
     "n-unique-addresses": "活躍地址數",
     "n-transactions": "每日交易數",
     "estimated-transaction-volume-usd": "鏈上交易量 USD",
+}
+
+BUBBLE_RANGES = {
+    "1H": {"hours": 1},
+    "1D": {"column": "change_24h"},
+    "1W": {"column": "change_7d"},
+    "1M": {"days": 30},
+    "3M": {"days": 90},
 }
 
 
@@ -208,8 +217,29 @@ with dashboard_tab:
 
 with bubble_tab:
     st.subheader("市場泡泡圖")
-    st.caption("泡泡大小代表市值，顏色代表 24h 漲跌；滑鼠移到泡泡上可查看價格、市值、成交量與 7d 漲跌。")
+    st.caption("泡泡大小代表市值，顏色代表所選期間漲跌；滑鼠移到泡泡上可查看價格、市值、成交量與 7D 漲跌。")
     if not prices_df.empty:
-        st.plotly_chart(market_bubble_chart(prices_df), use_container_width=True)
+        if "bubble_range" not in st.session_state:
+            st.session_state.bubble_range = "1D"
+        bubble_range = st.session_state.bubble_range
+        bubble_df = prices_df.copy()
+        range_config = BUBBLE_RANGES[bubble_range]
+        if "column" in range_config:
+            bubble_df["period_change"] = bubble_df[range_config["column"]]
+        else:
+            changes_df = get_price_period_changes(
+                hours=range_config.get("hours"),
+                days=range_config.get("days"),
+            )
+            bubble_df = bubble_df.merge(changes_df, on="coin_id", how="left")
+
+        if bubble_df["period_change"].notna().any():
+            st.plotly_chart(
+                market_bubble_chart(bubble_df, change_label=bubble_range),
+                use_container_width=True,
+            )
+        else:
+            st.info("這個時間範圍的價格點不足，請改選其他範圍或等待 ETL 累積資料。")
+        st.radio("時間範圍", list(BUBBLE_RANGES.keys()), horizontal=True, key="bubble_range")
     else:
         st.info("尚無市場資料 — 請先執行 ETL。")
